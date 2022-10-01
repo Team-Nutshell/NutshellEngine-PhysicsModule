@@ -3,9 +3,9 @@
 
 class NutshellPhysicsModule : public NutshellPhysicsModuleInterface {
 public:
-    NutshellPhysicsModule() : NutshellPhysicsModuleInterface("Nutshell Physics Test Module") {}
+	NutshellPhysicsModule() : NutshellPhysicsModuleInterface("Nutshell Physics Test Module") {}
 
-    void init();
-    void update(double dt);
-    void destroy();
+	void init();
+	void update(double dt);
+	void destroy();
 };
