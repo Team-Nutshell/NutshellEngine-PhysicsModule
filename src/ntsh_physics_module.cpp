@@ -1,6 +1,7 @@
 #include "ntsh_physics_module.h"
 #include "../external/Module/ntsh_module_defines.h"
 #include "../external/Module/ntsh_dynamic_library.h"
+#include "../external/Common/ntsh_engine_defines.h"
 #include "../external/Common/ntsh_engine_enums.h"
 
 void NutshellPhysicsModule::init() {
