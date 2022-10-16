@@ -5,16 +5,16 @@
 #include "../external/Common/ntsh_engine_enums.h"
 
 void NutshellPhysicsModule::init() {
-	NTSH_MODULE_WARNING("init() function not implemented.");
+	NTSH_MODULE_FUNCTION_NOT_IMPLEMENTED();
 }
 
 void NutshellPhysicsModule::update(double dt) {
 	NTSH_UNUSED(dt);
-	NTSH_MODULE_WARNING("update() function not implemented.");
+	NTSH_MODULE_FUNCTION_NOT_IMPLEMENTED();
 }
 
 void NutshellPhysicsModule::destroy() {
-	NTSH_MODULE_WARNING("destroy() function not implemented.");
+	NTSH_MODULE_FUNCTION_NOT_IMPLEMENTED();
 }
 
 extern "C" NTSH_MODULE_API NutshellPhysicsModuleInterface* createModule() {
