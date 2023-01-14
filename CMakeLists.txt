@@ -9,6 +9,7 @@ set(NTSH_DEFINES "")
 
 add_subdirectory(external/Module)
 add_subdirectory(external/Common)
+add_subdirectory(external/nml)
 
 list(APPEND NTSH_DEFINES NTSH_CURRENT_MODULE_PHYSICS)
 
@@ -22,7 +23,9 @@ set(HEADERS ${MODULE_HEADERS})
 
 add_library(${PROJECT_NAME} SHARED ${SOURCES} ${HEADERS})
 
-target_link_libraries(${PROJECT_NAME} PRIVATE NutshellEngine::Module NutshellEngine::Common)
+target_include_directories(${PROJECT_NAME} PRIVATE external/nml)
+
+target_link_libraries(${PROJECT_NAME} PRIVATE NutshellEngine::Module NutshellEngine::Common nml)
 
 target_compile_options(${PROJECT_NAME} PRIVATE
 	$<$<CXX_COMPILER_ID:MSVC>:/W4 /WX>
