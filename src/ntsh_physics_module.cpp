@@ -17,6 +17,13 @@ void NutshellPhysicsModule::destroy() {
 	NTSH_MODULE_FUNCTION_NOT_IMPLEMENTED();
 }
 
+bool NutshellPhysicsModule::intersect(Ntsh::ColliderShape* shape1, Ntsh::ColliderShape* shape2) {
+	NTSH_UNUSED(shape1);
+	NTSH_UNUSED(shape2);
+	NTSH_MODULE_FUNCTION_NOT_IMPLEMENTED();
+	return false;
+}
+
 extern "C" NTSH_MODULE_API NutshellPhysicsModuleInterface* createModule() {
 	return new NutshellPhysicsModule;
 }
