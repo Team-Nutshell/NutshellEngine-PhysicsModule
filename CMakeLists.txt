@@ -1,22 +1,22 @@
 cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
-set(NAME NutshellPhysicsModule)
+set(NAME NutshellEngine-PhysicsModule)
 project(${NAME} VERSION 0.0.1 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(NTSH_DEFINES "")
+set(NTSHENGN_DEFINES "")
 
 add_subdirectory(external/Module)
 add_subdirectory(external/Common)
 add_subdirectory(external/nml)
 
-list(APPEND NTSH_DEFINES NTSH_CURRENT_MODULE_PHYSICS)
+list(APPEND NTSHENGN_DEFINES NTSHENGN_CURRENT_MODULE_PHYSICS)
 
 set(MODULE_SOURCES
-	src/ntsh_physics_module.cpp)	
+	src/ntshengn_physics_module.cpp)	
 set(MODULE_HEADERS
-	src/ntsh_physics_module.h)
+	src/ntshengn_physics_module.h)
 
 set(SOURCES ${MODULE_SOURCES})
 set(HEADERS ${MODULE_HEADERS})
@@ -32,30 +32,30 @@ target_compile_options(${PROJECT_NAME} PRIVATE
 	$<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Werror>)
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
-	${NTSH_DEFINES}
+	${NTSHENGN_DEFINES}
 	PUBLIC
-	$<$<CONFIG:Debug>:NTSH_DEBUG>
-	$<$<CONFIG:MinSizeRel>:NTSH_RELEASE>
-	$<$<CONFIG:Release>:NTSH_RELEASE>
-	$<$<CONFIG:RelWithDebInfo>:NTSH_DEBUG>)
+	$<$<CONFIG:Debug>:NTSHENGN_DEBUG>
+	$<$<CONFIG:MinSizeRel>:NTSHENGN_RELEASE>
+	$<$<CONFIG:Release>:NTSHENGN_RELEASE>
+	$<$<CONFIG:RelWithDebInfo>:NTSHENGN_DEBUG>)
 
 set_target_properties(${PROJECT_NAME}
     PROPERTIES
-    DEFINE_SYMBOL "NutshellModule_EXPORTS")
+    DEFINE_SYMBOL "NutshellEngineModule_EXPORTS")
 
-set(NTSH_ENGINE_MODULES_DIRECTORY "" CACHE PATH "Give the option to install the built module into NutshellEngine\'s modules directory.")
-if(EXISTS ${NTSH_ENGINE_MODULES_DIRECTORY})
-	message(STATUS "Found NutshellEngine\'s modules directory at ${NTSH_ENGINE_MODULES_DIRECTORY}.")
-	set(CMAKE_INSTALL_PREFIX ${NTSH_ENGINE_MODULES_DIRECTORY})
+set(NTSHENGN_MODULES_DIRECTORY "" CACHE PATH "Give the option to install the built module into NutshellEngine\'s modules directory.")
+if(EXISTS ${NTSHENGN_MODULES_DIRECTORY})
+	message(STATUS "Found NutshellEngine\'s modules directory at ${NTSHENGN_MODULES_DIRECTORY}.")
+	set(CMAKE_INSTALL_PREFIX ${NTSHENGN_MODULES_DIRECTORY})
 	if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 		install(TARGETS ${PROJECT_NAME}
 			RUNTIME
-			DESTINATION ${NTSH_ENGINE_MODULES_DIRECTORY})
+			DESTINATION ${NTSHENGN_MODULES_DIRECTORY})
 	else()
 		install(TARGETS ${PROJECT_NAME}
 			LIBRARY
-			DESTINATION ${NTSH_ENGINE_MODULES_DIRECTORY})
+			DESTINATION ${NTSHENGN_MODULES_DIRECTORY})
 	endif()
-elseif(NOT NTSH_ENGINE_MODULES_DIRECTORY STREQUAL "")
-	message(WARNING "Could not find NutshellEngine\'s modules directory at ${NTSH_ENGINE_MODULES_DIRECTORY}.")
+elseif(NOT NTSHENGN_MODULES_DIRECTORY STREQUAL "")
+	message(WARNING "Could not find NutshellEngine\'s modules directory at ${NTSHENGN_MODULES_DIRECTORY}.")
 endif()
