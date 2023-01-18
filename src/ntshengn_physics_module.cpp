@@ -16,45 +16,45 @@ void NtshEngn::PhysicsModule::update(double dt) {
 void NtshEngn::PhysicsModule::destroy() {
 }
 
-bool NtshEngn::PhysicsModule::intersect(NtshEngn::ColliderShape* shape1, NtshEngn::ColliderShape* shape2) {
+bool NtshEngn::PhysicsModule::intersect(const NtshEngn::ColliderShape* shape1, const NtshEngn::ColliderShape* shape2) {
 	if (shape1->getType() == NtshEngn::ColliderShapeType::Sphere) {
 		if (shape2->getType() == NtshEngn::ColliderShapeType::Sphere) {
-			return intersect(static_cast<NtshEngn::ColliderSphere*>(shape1), static_cast<NtshEngn::ColliderSphere*>(shape2));
+			return intersect(static_cast<const NtshEngn::ColliderSphere*>(shape1), static_cast<const NtshEngn::ColliderSphere*>(shape2));
 		}
 		else if (shape2->getType() == NtshEngn::ColliderShapeType::AABB) {
-			return intersect(static_cast<NtshEngn::ColliderSphere*>(shape1), static_cast<NtshEngn::ColliderAABB*>(shape2));
+			return intersect(static_cast<const NtshEngn::ColliderSphere*>(shape1), static_cast<const NtshEngn::ColliderAABB*>(shape2));
 		}
 		else if (shape2->getType() == NtshEngn::ColliderShapeType::Capsule) {
-			return intersect(static_cast<NtshEngn::ColliderSphere*>(shape1), static_cast<NtshEngn::ColliderCapsule*>(shape2));
+			return intersect(static_cast<const NtshEngn::ColliderSphere*>(shape1), static_cast<const NtshEngn::ColliderCapsule*>(shape2));
 		}
 	}
 	else if (shape1->getType() == NtshEngn::ColliderShapeType::AABB) {
 		if (shape2->getType() == NtshEngn::ColliderShapeType::Sphere) {
-			return intersect(static_cast<NtshEngn::ColliderAABB*>(shape1), static_cast<NtshEngn::ColliderSphere*>(shape2));
+			return intersect(static_cast<const NtshEngn::ColliderAABB*>(shape1), static_cast<const NtshEngn::ColliderSphere*>(shape2));
 		}
 		else if (shape2->getType() == NtshEngn::ColliderShapeType::AABB) {
-			return intersect(static_cast<NtshEngn::ColliderAABB*>(shape1), static_cast<NtshEngn::ColliderAABB*>(shape2));
+			return intersect(static_cast<const NtshEngn::ColliderAABB*>(shape1), static_cast<const NtshEngn::ColliderAABB*>(shape2));
 		}
 		else if (shape2->getType() == NtshEngn::ColliderShapeType::Capsule) {
-			return intersect(static_cast<NtshEngn::ColliderAABB*>(shape1), static_cast<NtshEngn::ColliderCapsule*>(shape2));
+			return intersect(static_cast<const NtshEngn::ColliderAABB*>(shape1), static_cast<const NtshEngn::ColliderCapsule*>(shape2));
 		}
 	}
 	else if (shape1->getType() == NtshEngn::ColliderShapeType::Capsule) {
 		if (shape2->getType() == NtshEngn::ColliderShapeType::Sphere) {
-			return intersect(static_cast<NtshEngn::ColliderCapsule*>(shape1), static_cast<NtshEngn::ColliderSphere*>(shape2));
+			return intersect(static_cast<const NtshEngn::ColliderCapsule*>(shape1), static_cast<const NtshEngn::ColliderSphere*>(shape2));
 		}
 		else if (shape2->getType() == NtshEngn::ColliderShapeType::AABB) {
-			return intersect(static_cast<NtshEngn::ColliderCapsule*>(shape1), static_cast<NtshEngn::ColliderAABB*>(shape2));
+			return intersect(static_cast<const NtshEngn::ColliderCapsule*>(shape1), static_cast<const NtshEngn::ColliderAABB*>(shape2));
 		}
 		else if (shape2->getType() == NtshEngn::ColliderShapeType::Capsule) {
-			return intersect(static_cast<NtshEngn::ColliderCapsule*>(shape1), static_cast<NtshEngn::ColliderCapsule*>(shape2));
+			return intersect(static_cast<const NtshEngn::ColliderCapsule*>(shape1), static_cast<const NtshEngn::ColliderCapsule*>(shape2));
 		}
 	}
 
 	return false;
 }
 
-bool NtshEngn::PhysicsModule::intersect(NtshEngn::ColliderSphere* sphere1, NtshEngn::ColliderSphere* sphere2) {
+bool NtshEngn::PhysicsModule::intersect(const NtshEngn::ColliderSphere* sphere1, const NtshEngn::ColliderSphere* sphere2) {
 	const nml::vec3 sphere1Center = nml::vec3(sphere1->center[0], sphere1->center[1], sphere1->center[2]);
 	const nml::vec3 sphere2Center = nml::vec3(sphere2->center[0], sphere2->center[1], sphere2->center[2]);
 	const nml::vec3 centerDiff = sphere1Center - sphere2Center;
@@ -62,7 +62,7 @@ bool NtshEngn::PhysicsModule::intersect(NtshEngn::ColliderSphere* sphere1, NtshE
 	return centerDiff.length() < (sphere1->radius + sphere2->radius);
 }
 
-bool NtshEngn::PhysicsModule::intersect(NtshEngn::ColliderSphere* sphere, NtshEngn::ColliderAABB* aabb) {
+bool NtshEngn::PhysicsModule::intersect(const NtshEngn::ColliderSphere* sphere, const NtshEngn::ColliderAABB* aabb) {
 	const float x = std::max(aabb->min[0], std::min(sphere->center[0], aabb->max[0]));
 	const float y = std::max(aabb->min[1], std::min(sphere->center[1], aabb->max[1]));
 	const float z = std::max(aabb->min[2], std::min(sphere->center[2], aabb->max[2]));
@@ -74,7 +74,7 @@ bool NtshEngn::PhysicsModule::intersect(NtshEngn::ColliderSphere* sphere, NtshEn
 	return distance < sphere->radius;
 }
 
-bool NtshEngn::PhysicsModule::intersect(NtshEngn::ColliderSphere* sphere, NtshEngn::ColliderCapsule* capsule) {
+bool NtshEngn::PhysicsModule::intersect(const NtshEngn::ColliderSphere* sphere, const NtshEngn::ColliderCapsule* capsule) {
 	const nml::vec3 sphereCenter = nml::vec3(sphere->center[0], sphere->center[1], sphere->center[2]);
 	const nml::vec3 capsuleBase = nml::vec3(capsule->base[0], capsule->base[1], capsule->base[2]);
 	const nml::vec3 capsuleTip = nml::vec3(capsule->tip[0], capsule->tip[1], capsule->tip[2]);
@@ -86,7 +86,7 @@ bool NtshEngn::PhysicsModule::intersect(NtshEngn::ColliderSphere* sphere, NtshEn
 	return squareDistance <= (radius * radius);
 }
 
-bool NtshEngn::PhysicsModule::intersect(NtshEngn::ColliderAABB* aabb1, NtshEngn::ColliderAABB* aabb2) {
+bool NtshEngn::PhysicsModule::intersect(const NtshEngn::ColliderAABB* aabb1, const NtshEngn::ColliderAABB* aabb2) {
 	return aabb1->min[0] <= aabb2->max[0] &&
 		aabb1->max[0] >= aabb2->min[0] &&
 		aabb1->min[1] <= aabb2->max[1] &&
@@ -95,7 +95,7 @@ bool NtshEngn::PhysicsModule::intersect(NtshEngn::ColliderAABB* aabb1, NtshEngn:
 		aabb1->max[2] >= aabb2->min[2];
 }
 
-bool NtshEngn::PhysicsModule::intersect(NtshEngn::ColliderAABB* aabb, NtshEngn::ColliderCapsule* capsule) {
+bool NtshEngn::PhysicsModule::intersect(const NtshEngn::ColliderAABB* aabb, const NtshEngn::ColliderCapsule* capsule) {
 	const nml::vec3 aabbMin = nml::vec3(aabb->min[0], aabb->min[1], aabb->min[2]);
 	const nml::vec3 aabbMax = nml::vec3(aabb->max[0], aabb->max[1], aabb->max[2]);
 
@@ -127,7 +127,7 @@ bool NtshEngn::PhysicsModule::intersect(NtshEngn::ColliderAABB* aabb, NtshEngn::
 	return closestPointSquareDistance <= (capsule->radius * capsule->radius);
 }
 
-bool NtshEngn::PhysicsModule::intersect(NtshEngn::ColliderCapsule* capsule1, NtshEngn::ColliderCapsule* capsule2) {
+bool NtshEngn::PhysicsModule::intersect(const NtshEngn::ColliderCapsule* capsule1, const NtshEngn::ColliderCapsule* capsule2) {
 	const nml::vec3 capsule1Base = nml::vec3(capsule1->base[0], capsule1->base[1], capsule1->base[2]);
 	const nml::vec3 capsule1Tip = nml::vec3(capsule1->tip[0], capsule1->tip[1], capsule1->tip[2]);
 	const nml::vec3 capsule2Base = nml::vec3(capsule2->base[0], capsule2->base[1], capsule2->base[2]);
@@ -170,15 +170,15 @@ bool NtshEngn::PhysicsModule::intersect(NtshEngn::ColliderCapsule* capsule1, Nts
 	return diff.length() < (capsule1->radius + capsule2->radius);
 }
 
-bool NtshEngn::PhysicsModule::intersect(NtshEngn::ColliderAABB* aabb, NtshEngn::ColliderSphere* sphere) {
+bool NtshEngn::PhysicsModule::intersect(const NtshEngn::ColliderAABB* aabb, const NtshEngn::ColliderSphere* sphere) {
 	return intersect(sphere, aabb);
 }
 
-bool NtshEngn::PhysicsModule::intersect(NtshEngn::ColliderCapsule* capsule, NtshEngn::ColliderSphere* sphere) {
+bool NtshEngn::PhysicsModule::intersect(const NtshEngn::ColliderCapsule* capsule, const NtshEngn::ColliderSphere* sphere) {
 	return intersect(sphere, capsule);
 }
 
-bool NtshEngn::PhysicsModule::intersect(NtshEngn::ColliderCapsule* capsule, NtshEngn::ColliderAABB* aabb) {
+bool NtshEngn::PhysicsModule::intersect(const NtshEngn::ColliderCapsule* capsule, const NtshEngn::ColliderAABB* aabb) {
 	return intersect(aabb, capsule);
 }
 
