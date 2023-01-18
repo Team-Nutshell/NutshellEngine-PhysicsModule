@@ -17,36 +17,36 @@ void NtshEngn::PhysicsModule::destroy() {
 }
 
 bool NtshEngn::PhysicsModule::intersect(NtshEngn::ColliderShape* shape1, NtshEngn::ColliderShape* shape2) {
-	if (shape1->type == NtshEngn::ColliderShapeType::Sphere) {
-		if (shape2->type == NtshEngn::ColliderShapeType::Sphere) {
+	if (shape1->getType() == NtshEngn::ColliderShapeType::Sphere) {
+		if (shape2->getType() == NtshEngn::ColliderShapeType::Sphere) {
 			return intersect(static_cast<NtshEngn::ColliderSphere*>(shape1), static_cast<NtshEngn::ColliderSphere*>(shape2));
 		}
-		else if (shape2->type == NtshEngn::ColliderShapeType::AABB) {
+		else if (shape2->getType() == NtshEngn::ColliderShapeType::AABB) {
 			return intersect(static_cast<NtshEngn::ColliderSphere*>(shape1), static_cast<NtshEngn::ColliderAABB*>(shape2));
 		}
-		else if (shape2->type == NtshEngn::ColliderShapeType::Capsule) {
+		else if (shape2->getType() == NtshEngn::ColliderShapeType::Capsule) {
 			return intersect(static_cast<NtshEngn::ColliderSphere*>(shape1), static_cast<NtshEngn::ColliderCapsule*>(shape2));
 		}
 	}
-	else if (shape1->type == NtshEngn::ColliderShapeType::AABB) {
-		if (shape2->type == NtshEngn::ColliderShapeType::Sphere) {
+	else if (shape1->getType() == NtshEngn::ColliderShapeType::AABB) {
+		if (shape2->getType() == NtshEngn::ColliderShapeType::Sphere) {
 			return intersect(static_cast<NtshEngn::ColliderAABB*>(shape1), static_cast<NtshEngn::ColliderSphere*>(shape2));
 		}
-		else if (shape2->type == NtshEngn::ColliderShapeType::AABB) {
+		else if (shape2->getType() == NtshEngn::ColliderShapeType::AABB) {
 			return intersect(static_cast<NtshEngn::ColliderAABB*>(shape1), static_cast<NtshEngn::ColliderAABB*>(shape2));
 		}
-		else if (shape2->type == NtshEngn::ColliderShapeType::Capsule) {
+		else if (shape2->getType() == NtshEngn::ColliderShapeType::Capsule) {
 			return intersect(static_cast<NtshEngn::ColliderAABB*>(shape1), static_cast<NtshEngn::ColliderCapsule*>(shape2));
 		}
 	}
-	else if (shape1->type == NtshEngn::ColliderShapeType::Capsule) {
-		if (shape2->type == NtshEngn::ColliderShapeType::Sphere) {
+	else if (shape1->getType() == NtshEngn::ColliderShapeType::Capsule) {
+		if (shape2->getType() == NtshEngn::ColliderShapeType::Sphere) {
 			return intersect(static_cast<NtshEngn::ColliderCapsule*>(shape1), static_cast<NtshEngn::ColliderSphere*>(shape2));
 		}
-		else if (shape2->type == NtshEngn::ColliderShapeType::AABB) {
+		else if (shape2->getType() == NtshEngn::ColliderShapeType::AABB) {
 			return intersect(static_cast<NtshEngn::ColliderCapsule*>(shape1), static_cast<NtshEngn::ColliderAABB*>(shape2));
 		}
-		else if (shape2->type == NtshEngn::ColliderShapeType::Capsule) {
+		else if (shape2->getType() == NtshEngn::ColliderShapeType::Capsule) {
 			return intersect(static_cast<NtshEngn::ColliderCapsule*>(shape1), static_cast<NtshEngn::ColliderCapsule*>(shape2));
 		}
 	}
