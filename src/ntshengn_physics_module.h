@@ -12,7 +12,7 @@ namespace NtshEngn {
 		void destroy();
 
 		// Returns true if the two shapes are intersecting with each other, else, returns false
-		bool intersect(const NtshEngn::ColliderShape& shape1, const NtshEngn::ColliderShape& shape2);
+		bool intersect(const NtshEngn::ColliderShape* shape1, const NtshEngn::ColliderShape* shape2);
 	};
 
 }

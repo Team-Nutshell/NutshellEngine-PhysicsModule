@@ -17,7 +17,7 @@ void NtshEngn::PhysicsModule::destroy() {
 	NTSHENGN_MODULE_FUNCTION_NOT_IMPLEMENTED();
 }
 
-bool NtshEngn::PhysicsModule::intersect(const NtshEngn::ColliderShape& shape1, const NtshEngn::ColliderShape& shape2) {
+bool NtshEngn::PhysicsModule::intersect(const NtshEngn::ColliderShape* shape1, const NtshEngn::ColliderShape* shape2) {
 	NTSHENGN_UNUSED(shape1);
 	NTSHENGN_UNUSED(shape2);
 	NTSHENGN_MODULE_FUNCTION_NOT_IMPLEMENTED();
