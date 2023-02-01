@@ -21,6 +21,7 @@ bool NtshEngn::PhysicsModule::intersect(const NtshEngn::ColliderShape* shape1, c
 	NTSHENGN_UNUSED(shape1);
 	NTSHENGN_UNUSED(shape2);
 	NTSHENGN_MODULE_FUNCTION_NOT_IMPLEMENTED();
+
 	return false;
 }
 
