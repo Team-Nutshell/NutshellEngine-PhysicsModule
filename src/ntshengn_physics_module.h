@@ -1,5 +1,6 @@
 #pragma once
 #include "../external/Common/module_interfaces/ntshengn_physics_module_interface.h"
+#include "../external/Common/ecs/ntshengn_ecs.h"
 #include "../external/nml/include/nml.h"
 
 namespace NtshEngn {
@@ -14,6 +15,9 @@ namespace NtshEngn {
 
 		// Returns true if the two shapes are intersecting with each other, else, returns false
 		bool intersect(const NtshEngn::ColliderShape* shape1, const NtshEngn::ColliderShape* shape2);
+
+	public:
+		const ComponentMask getComponentMask() const;
 
 	private:
 		bool intersect(const NtshEngn::ColliderSphere* sphere1, const NtshEngn::ColliderSphere* sphere2);

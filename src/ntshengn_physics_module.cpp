@@ -54,6 +54,15 @@ bool NtshEngn::PhysicsModule::intersect(const NtshEngn::ColliderShape* shape1, c
 	return false;
 }
 
+const NtshEngn::ComponentMask NtshEngn::PhysicsModule::getComponentMask() const {
+	ComponentMask componentMask;
+	componentMask.set(m_ecs->getComponentId<AABBCollidable>());
+	componentMask.set(m_ecs->getComponentId<SphereCollidable>());
+	componentMask.set(m_ecs->getComponentId<CapsuleCollidable>());
+
+	return componentMask;
+}
+
 bool NtshEngn::PhysicsModule::intersect(const NtshEngn::ColliderSphere* sphere1, const NtshEngn::ColliderSphere* sphere2) {
 	const nml::vec3 sphere1Center = nml::vec3(sphere1->center[0], sphere1->center[1], sphere1->center[2]);
 	const nml::vec3 sphere2Center = nml::vec3(sphere2->center[0], sphere2->center[1], sphere2->center[2]);
