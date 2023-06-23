@@ -20,7 +20,7 @@ namespace NtshEngn {
 		void destroy();
 
 		// Returns true if the two shapes are intersecting with each other, else, returns false
-		bool intersect(const NtshEngn::ColliderShape* shape1, const NtshEngn::ColliderShape* shape2);
+		NtshEngn::IntersectionInformation intersect(const NtshEngn::ColliderShape* shape1, const NtshEngn::ColliderShape* shape2);
 
 	public:
 		const ComponentMask getComponentMask() const;
@@ -29,16 +29,16 @@ namespace NtshEngn {
 		void onEntityComponentRemoved(Entity entity, Component componentID);
 
 	private:
-		bool intersect(const NtshEngn::ColliderSphere* sphere1, const NtshEngn::ColliderSphere* sphere2);
-		bool intersect(const NtshEngn::ColliderSphere* sphere, const NtshEngn::ColliderAABB* aabb);
-		bool intersect(const NtshEngn::ColliderSphere* sphere, const NtshEngn::ColliderCapsule* capsule);
-		bool intersect(const NtshEngn::ColliderAABB* aabb1, const NtshEngn::ColliderAABB* aabb2);
-		bool intersect(const NtshEngn::ColliderAABB* aabb, const NtshEngn::ColliderCapsule* capsule);
-		bool intersect(const NtshEngn::ColliderCapsule* capsule1, const NtshEngn::ColliderCapsule* capsule2);
+		NtshEngn::IntersectionInformation intersect(const NtshEngn::ColliderSphere* sphere1, const NtshEngn::ColliderSphere* sphere2);
+		NtshEngn::IntersectionInformation intersect(const NtshEngn::ColliderSphere* sphere, const NtshEngn::ColliderAABB* aabb);
+		NtshEngn::IntersectionInformation intersect(const NtshEngn::ColliderSphere* sphere, const NtshEngn::ColliderCapsule* capsule);
+		NtshEngn::IntersectionInformation intersect(const NtshEngn::ColliderAABB* aabb1, const NtshEngn::ColliderAABB* aabb2);
+		NtshEngn::IntersectionInformation intersect(const NtshEngn::ColliderAABB* aabb, const NtshEngn::ColliderCapsule* capsule);
+		NtshEngn::IntersectionInformation intersect(const NtshEngn::ColliderCapsule* capsule1, const NtshEngn::ColliderCapsule* capsule2);
 
-		bool intersect(const NtshEngn::ColliderAABB* aabb, const NtshEngn::ColliderSphere* sphere);
-		bool intersect(const NtshEngn::ColliderCapsule* capsule, const NtshEngn::ColliderSphere* sphere);
-		bool intersect(const NtshEngn::ColliderCapsule* capsule, const NtshEngn::ColliderAABB* aabb);
+		NtshEngn::IntersectionInformation intersect(const NtshEngn::ColliderAABB* aabb, const NtshEngn::ColliderSphere* sphere);
+		NtshEngn::IntersectionInformation intersect(const NtshEngn::ColliderCapsule* capsule, const NtshEngn::ColliderSphere* sphere);
+		NtshEngn::IntersectionInformation intersect(const NtshEngn::ColliderCapsule* capsule, const NtshEngn::ColliderAABB* aabb);
 
 		float squareDistancePointSegment(const nml::vec3& point, const nml::vec3& segmentA, const nml::vec3& segmentB);
 		nml::vec3 closestPointOnSegment(const nml::vec3& point, const nml::vec3& segmentA, const nml::vec3& segmentB);
