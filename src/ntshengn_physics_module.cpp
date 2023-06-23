@@ -11,20 +11,20 @@ void NtshEngn::PhysicsModule::init() {
 
 void NtshEngn::PhysicsModule::update(double dt) {
 	const float dtSeconds = static_cast<float>(dt / 1000.0);
-	for (Entity entity : m_entities) {
-		const Rigidbody& entityRigidbody = m_ecs->getComponent<Rigidbody>(entity);
+	for (Entity entity : entities) {
+		const Rigidbody& entityRigidbody = ecs->getComponent<Rigidbody>(entity);
 		RigidbodyState& entityRigidbodyState = m_rigidbodyStates[entity];
 
-		Transform& entityTransform = m_ecs->getComponent<Transform>(entity);
+		Transform& entityTransform = ecs->getComponent<Transform>(entity);
 
 		entityRigidbodyState.acceleration = nml::vec3(entityRigidbody.force.data()) / entityRigidbody.mass;
 		entityRigidbodyState.acceleration += m_gravity;
 
+		entityRigidbodyState.velocity += entityRigidbodyState.acceleration * dtSeconds;
+
 		entityTransform.position[0] += entityRigidbodyState.velocity.x * dtSeconds;
 		entityTransform.position[1] += entityRigidbodyState.velocity.y * dtSeconds;
 		entityTransform.position[2] += entityRigidbodyState.velocity.z * dtSeconds;
-
-		entityRigidbodyState.velocity += entityRigidbodyState.acceleration * dtSeconds;
 	}
 }
 
@@ -71,19 +71,19 @@ bool NtshEngn::PhysicsModule::intersect(const NtshEngn::ColliderShape* shape1, c
 
 const NtshEngn::ComponentMask NtshEngn::PhysicsModule::getComponentMask() const {
 	ComponentMask componentMask;
-	componentMask.set(m_ecs->getComponentId<Rigidbody>());
+	componentMask.set(ecs->getComponentId<Rigidbody>());
 
 	return componentMask;
 }
 
 void NtshEngn::PhysicsModule::onEntityComponentAdded(Entity entity, Component componentID) {
-	if (componentID == m_ecs->getComponentId<Rigidbody>()) {
+	if (componentID == ecs->getComponentId<Rigidbody>()) {
 		m_rigidbodyStates[entity] = RigidbodyState();
 	}
 }
 
 void NtshEngn::PhysicsModule::onEntityComponentRemoved(Entity entity, Component componentID) {
-	if (componentID == m_ecs->getComponentId<Rigidbody>()) {
+	if (componentID == ecs->getComponentId<Rigidbody>()) {
 		m_rigidbodyStates.erase(entity);
 	}
 }
