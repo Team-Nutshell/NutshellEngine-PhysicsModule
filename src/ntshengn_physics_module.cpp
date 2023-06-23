@@ -7,7 +7,6 @@
 #include <cmath>
 
 void NtshEngn::PhysicsModule::init() {
-
 }
 
 void NtshEngn::PhysicsModule::update(double dt) {
@@ -30,7 +29,6 @@ void NtshEngn::PhysicsModule::update(double dt) {
 }
 
 void NtshEngn::PhysicsModule::destroy() {
-
 }
 
 NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const NtshEngn::ColliderShape* shape1, const NtshEngn::ColliderShape* shape2) {
