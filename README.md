@@ -1,2 +1,2 @@
-# NutshellEngine-PhysicsModule
-NutshellEngine's Physics Module resources.
+# NutshellEngine-PhysicsModule - Euler
+NutshellEngine's Physics Module using an Euler integrator.
