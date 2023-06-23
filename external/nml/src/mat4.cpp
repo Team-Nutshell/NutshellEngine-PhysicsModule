@@ -24,7 +24,7 @@ mat4::mat4(vec4 _x, float _yx, float _yy, float _yz, float _yw, vec4 _z, vec4 _w
 mat4::mat4(vec4 _x, vec4 _y, float _zx, float _zy, float _zz, float _zw, vec4 _w): x(_x), y(_y), z(_zx, _zy, _zz, _zw), w(_w) {}
 mat4::mat4(vec4 _x, vec4 _y, vec4 _z, float _wx, float _wy, float _wz, float _ww): x(_x), y(_y), z(_z), w(_wx, _wy, _wz, _ww) {}
 mat4::mat4(vec4 _x, vec4 _y, vec4 _z, vec4 _w): x(_x), y(_y), z(_z), w(_w) {}
-mat4::mat4(float* _ptr): x(_ptr), y(_ptr + 4), z(_ptr + 8), w(_ptr + 12) {}
+mat4::mat4(const float* _ptr): x(_ptr), y(_ptr + 4), z(_ptr + 8), w(_ptr + 12) {}
 
 mat4& mat4::operator+=(const mat4& other) {
 	x += other.x;

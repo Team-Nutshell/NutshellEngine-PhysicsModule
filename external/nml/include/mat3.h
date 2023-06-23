@@ -28,7 +28,7 @@ struct mat3 {
 	mat3(vec3 _x, vec3 _y, float _zx, float _zy, float _zz);
 	mat3(vec3 _x, float _yx, float _yy, float _yz, vec3 _z);
 	mat3(vec3 _x, vec3 _y, vec3 _z);
-	mat3(float* _ptr);
+	mat3(const float* _ptr);
 	mat3(mat4 _mat);
 
 	// Operators

@@ -39,7 +39,7 @@ struct mat4 {
 	mat4(vec4 _x, vec4 _y, float _zx, float _zy, float _zz, float _zw, vec4 _w);
 	mat4(vec4 _x, vec4 _y, vec4 _z, float _wx, float _wy, float _wz, float _ww);
 	mat4(vec4 _x, vec4 _y, vec4 _z, vec4 _w);
-	mat4(float* _ptr);
+	mat4(const float* _ptr);
 
 	// Operators
 	mat4& operator+=(const mat4& other);

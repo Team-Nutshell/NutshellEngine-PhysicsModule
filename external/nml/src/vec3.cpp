@@ -12,7 +12,7 @@ vec3::vec3(float _value): x(_value), y(_value), z(_value) {}
 vec3::vec3(float _x, float _y, float _z): x(_x), y(_y), z(_z) {}
 vec3::vec3(float _x, vec2 _yz): x(_x), y(_yz.x), z(_yz.y) {}
 vec3::vec3(vec2 _xy, float _z): x(_xy.x), y(_xy.y), z(_z) {}
-vec3::vec3(float* _ptr): x(*_ptr), y(*(_ptr + 1)), z(*(_ptr + 2)) {}
+vec3::vec3(const float* _ptr): x(*_ptr), y(*(_ptr + 1)), z(*(_ptr + 2)) {}
 vec3::vec3(vec4 _xyzw): x(_xyzw.x), y(_xyzw.y), z(_xyzw.z) {}
 
 vec3& vec3::operator+=(const vec3& other) { 

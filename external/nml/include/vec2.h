@@ -15,7 +15,7 @@ struct vec2 {
 	vec2();
 	vec2(float _value);
 	vec2(float _x, float _y);
-	vec2(float* _ptr);
+	vec2(const float* _ptr);
 	vec2(vec3 _xyz);
 	vec2(vec4 _xyzw);
 

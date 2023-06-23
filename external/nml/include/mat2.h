@@ -21,7 +21,7 @@ struct mat2 {
 	mat2(float _xx, float _xy, vec2 _y);
 	mat2(vec2 _x, float _yx, float _yy);
 	mat2(vec2 _x, vec2 _y);
-	mat2(float* _ptr);
+	mat2(const float* _ptr);
 	mat2(mat3 _mat);
 	mat2(mat4 _mat);
 

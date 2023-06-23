@@ -64,8 +64,8 @@ const NtshEngn::ComponentMask NtshEngn::PhysicsModule::getComponentMask() const 
 }
 
 bool NtshEngn::PhysicsModule::intersect(const NtshEngn::ColliderSphere* sphere1, const NtshEngn::ColliderSphere* sphere2) {
-	const nml::vec3 sphere1Center = nml::vec3(sphere1->center[0], sphere1->center[1], sphere1->center[2]);
-	const nml::vec3 sphere2Center = nml::vec3(sphere2->center[0], sphere2->center[1], sphere2->center[2]);
+	const nml::vec3 sphere1Center = nml::vec3(sphere1->center.data());
+	const nml::vec3 sphere2Center = nml::vec3(sphere2->center.data());
 	const nml::vec3 centerDiff = sphere1Center - sphere2Center;
 
 	return centerDiff.length() < (sphere1->radius + sphere2->radius);
@@ -84,9 +84,9 @@ bool NtshEngn::PhysicsModule::intersect(const NtshEngn::ColliderSphere* sphere, 
 }
 
 bool NtshEngn::PhysicsModule::intersect(const NtshEngn::ColliderSphere* sphere, const NtshEngn::ColliderCapsule* capsule) {
-	const nml::vec3 sphereCenter = nml::vec3(sphere->center[0], sphere->center[1], sphere->center[2]);
-	const nml::vec3 capsuleBase = nml::vec3(capsule->base[0], capsule->base[1], capsule->base[2]);
-	const nml::vec3 capsuleTip = nml::vec3(capsule->tip[0], capsule->tip[1], capsule->tip[2]);
+	const nml::vec3 sphereCenter = nml::vec3(sphere->center.data());
+	const nml::vec3 capsuleBase = nml::vec3(capsule->base.data());
+	const nml::vec3 capsuleTip = nml::vec3(capsule->tip.data());
 
 	const float squareDistance = squareDistancePointSegment(sphereCenter, capsuleBase, capsuleTip);
 
@@ -105,8 +105,8 @@ bool NtshEngn::PhysicsModule::intersect(const NtshEngn::ColliderAABB* aabb1, con
 }
 
 bool NtshEngn::PhysicsModule::intersect(const NtshEngn::ColliderAABB* aabb, const NtshEngn::ColliderCapsule* capsule) {
-	const nml::vec3 aabbMin = nml::vec3(aabb->min[0], aabb->min[1], aabb->min[2]);
-	const nml::vec3 aabbMax = nml::vec3(aabb->max[0], aabb->max[1], aabb->max[2]);
+	const nml::vec3 aabbMin = nml::vec3(aabb->min.data());
+	const nml::vec3 aabbMax = nml::vec3(aabb->max.data());
 
 	const nml::vec3 mmm = nml::vec3(aabbMin.x, aabbMin.y, aabbMin.z);
 	const nml::vec3 Mmm = nml::vec3(aabbMax.x, aabbMin.y, aabbMin.z);
@@ -117,8 +117,8 @@ bool NtshEngn::PhysicsModule::intersect(const NtshEngn::ColliderAABB* aabb, cons
 	const nml::vec3 mMM = nml::vec3(aabbMin.x, aabbMax.y, aabbMax.z);
 	const nml::vec3 MMM = nml::vec3(aabbMax.x, aabbMax.y, aabbMax.z);
 
-	const nml::vec3 capsuleBase = nml::vec3(capsule->base[0], capsule->base[1], capsule->base[2]);
-	const nml::vec3 capsuleTip = nml::vec3(capsule->tip[0], capsule->tip[1], capsule->tip[2]);
+	const nml::vec3 capsuleBase = nml::vec3(capsule->base.data());
+	const nml::vec3 capsuleTip = nml::vec3(capsule->tip.data());
 
 	const std::array<float, 8> pointsSquareDistance = {
 		squareDistancePointSegment(mmm, capsuleBase, capsuleTip),
@@ -137,10 +137,10 @@ bool NtshEngn::PhysicsModule::intersect(const NtshEngn::ColliderAABB* aabb, cons
 }
 
 bool NtshEngn::PhysicsModule::intersect(const NtshEngn::ColliderCapsule* capsule1, const NtshEngn::ColliderCapsule* capsule2) {
-	const nml::vec3 capsule1Base = nml::vec3(capsule1->base[0], capsule1->base[1], capsule1->base[2]);
-	const nml::vec3 capsule1Tip = nml::vec3(capsule1->tip[0], capsule1->tip[1], capsule1->tip[2]);
-	const nml::vec3 capsule2Base = nml::vec3(capsule2->base[0], capsule2->base[1], capsule2->base[2]);
-	const nml::vec3 capsule2Tip = nml::vec3(capsule2->tip[0], capsule2->tip[1], capsule2->tip[2]);
+	const nml::vec3 capsule1Base = nml::vec3(capsule1->base.data());
+	const nml::vec3 capsule1Tip = nml::vec3(capsule1->tip.data());
+	const nml::vec3 capsule2Base = nml::vec3(capsule2->base.data());
+	const nml::vec3 capsule2Tip = nml::vec3(capsule2->tip.data());
 
 	const nml::vec3 capsule1Normal = nml::normalize(capsule1Tip - capsule1Base);
 	const nml::vec3 capsule1LineEndOffset = capsule1Normal * capsule1->radius;
@@ -174,7 +174,6 @@ bool NtshEngn::PhysicsModule::intersect(const NtshEngn::ColliderCapsule* capsule
 	capsule1Best = closestPointOnSegment(capsule2Best, capsule1A, capsule1B);
 
 	const nml::vec3 diff = capsule1Best - capsule2Best;
-
 
 	return diff.length() < (capsule1->radius + capsule2->radius);
 }

@@ -15,7 +15,7 @@ vec4::vec4(float _x, float _y, vec2 _zw): x(_x), y(_y), z(_zw.x), w(_zw.y) {}
 vec4::vec4(float _x, vec2 _yz, float _w): x(_x), y(_yz.x), z(_yz.y), w(_w) {}
 vec4::vec4(vec2 _xy, float _z, float _w): x(_xy.x), y(_xy.y), z(_z), w(_w) {}
 vec4::vec4(vec2 _xy, vec2 _zw): x(_xy.x), y(_xy.y), z(_zw.x), w(_zw.y) {}
-vec4::vec4(float* _ptr): x(*_ptr), y(*(_ptr + 1)), z(*(_ptr + 2)), w(*(_ptr + 3)) {}
+vec4::vec4(const float* _ptr): x(*_ptr), y(*(_ptr + 1)), z(*(_ptr + 2)), w(*(_ptr + 3)) {}
 
 vec4& vec4::operator+=(const vec4& other) { 
 	x += other.x;
