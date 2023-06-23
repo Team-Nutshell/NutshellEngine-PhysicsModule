@@ -2,8 +2,14 @@
 #include "../external/Common/module_interfaces/ntshengn_physics_module_interface.h"
 #include "../external/Common/ecs/ntshengn_ecs.h"
 #include "../external/nml/include/nml.h"
+#include <unordered_map>
 
 namespace NtshEngn {
+
+	struct RigidbodyState {
+		nml::vec3 acceleration = nml::vec3(0.0f, 0.0f, 0.0f);
+		nml::vec3 velocity = nml::vec3(0.0f, 0.0f, 0.0f);
+	};
 
 	class PhysicsModule : public PhysicsModuleInterface {
 	public:
@@ -19,6 +25,9 @@ namespace NtshEngn {
 	public:
 		const ComponentMask getComponentMask() const;
 
+		void onEntityComponentAdded(Entity entity, Component componentID);
+		void onEntityComponentRemoved(Entity entity, Component componentID);
+
 	private:
 		bool intersect(const NtshEngn::ColliderSphere* sphere1, const NtshEngn::ColliderSphere* sphere2);
 		bool intersect(const NtshEngn::ColliderSphere* sphere, const NtshEngn::ColliderAABB* aabb);
@@ -33,6 +42,11 @@ namespace NtshEngn {
 
 		float squareDistancePointSegment(const nml::vec3& point, const nml::vec3& segmentA, const nml::vec3& segmentB);
 		nml::vec3 closestPointOnSegment(const nml::vec3& point, const nml::vec3& segmentA, const nml::vec3& segmentB);
+
+	private:
+		const nml::vec3 m_gravity = nml::vec3(0.0f, -1.0f, 0.0f);
+
+		std::unordered_map<Entity, RigidbodyState> m_rigidbodyStates;
 	};
 
 }
