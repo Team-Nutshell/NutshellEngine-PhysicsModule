@@ -190,8 +190,9 @@ void NtshEngn::PhysicsModule::collisionsResponse() {
 			continue;
 		}
 
-		const nml::vec3 relativeVelocity = entity2RigidbodyState.velocity - entity1RigidbodyState.velocity;
-		const float rVdotN = nml::dot(relativeVelocity, collision.intersectionNormal);
+		// Impulse
+		nml::vec3 relativeVelocity = entity2RigidbodyState.velocity - entity1RigidbodyState.velocity;
+		float rVdotN = nml::dot(relativeVelocity, collision.intersectionNormal);
 
 		if (rVdotN >= 0.0f) {
 			continue;
@@ -203,11 +204,49 @@ void NtshEngn::PhysicsModule::collisionsResponse() {
 		const float j = (-(1.0f + e) * rVdotN) / (invMass1 + invMass2);
 		const nml::vec3 impulse = j * collision.intersectionNormal;
 
+		if (!entity1Rigidbody.isStatic) {
+			entity1RigidbodyState.velocity -= impulse * invMass1;
+		}
+
+		if (!entity2Rigidbody.isStatic) {
+			entity2RigidbodyState.velocity += impulse * invMass2;
+		}
+
+		// Friction
+		relativeVelocity = entity2RigidbodyState.velocity - entity1RigidbodyState.velocity;
+		rVdotN = nml::dot(relativeVelocity, collision.intersectionNormal);
+
+		nml::vec3 tangent = relativeVelocity - (rVdotN * collision.intersectionNormal);
+		if (tangent.length() > 0.0001f) {
+			tangent = nml::normalize(tangent);
+		}
+
+		const float fVelocity = nml::dot(relativeVelocity, tangent);
+
+		float mu = nml::vec2(entity1Rigidbody.staticFriction, entity2Rigidbody.staticFriction).length();
+		const float f = -fVelocity / (invMass1 + invMass2);
+
+		nml::vec3 friction;
+		if (std::abs(f) < (j * mu)) {
+			friction = f * tangent;
+		}
+		else {
+			mu = nml::vec2(entity1Rigidbody.dynamicFriction, entity2Rigidbody.dynamicFriction).length();
+			friction = -j * tangent * mu;
+		}
+
+		if (!entity1Rigidbody.isStatic) {
+			entity1RigidbodyState.velocity -= friction * invMass1;
+		}
+
+		if (!entity2Rigidbody.isStatic) {
+			entity2RigidbodyState.velocity += friction * invMass2;
+		}
+
+		// Position correction
 		const nml::vec3 correction = (std::max(collision.intersectionDepth - 0.01f, 0.0f) * 0.8f * collision.intersectionNormal / (invMass1 + invMass2));
 
 		if (!entity1Rigidbody.isStatic) {
-			entity1RigidbodyState.velocity -= impulse * invMass1;
-
 			const nml::vec3 entity1PositionCorrection = correction * invMass1;
 
 			entity1Transform.position[0] -= entity1PositionCorrection.x;
@@ -216,8 +255,6 @@ void NtshEngn::PhysicsModule::collisionsResponse() {
 		}
 
 		if (!entity2Rigidbody.isStatic) {
-			entity2RigidbodyState.velocity += impulse * invMass2;
-
 			const nml::vec3 entity2PositionCorrected = correction * invMass2;
 
 			entity2Transform.position[0] += entity2PositionCorrected.x;
