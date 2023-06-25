@@ -95,6 +95,9 @@ void NtshEngn::PhysicsModule::collisionsDetection() {
 	std::set<Entity>::iterator it = entities.begin();
 	while (it != entities.end()) {
 		Entity entity = *it;
+
+		const NtshEngn::Rigidbody& entityRigidbody = ecs->getComponent<Rigidbody>(entity);
+
 		NtshEngn::ColliderShape* colliderShape = nullptr;
 
 		NtshEngn::ColliderSphere colliderSphere;
@@ -122,6 +125,13 @@ void NtshEngn::PhysicsModule::collisionsDetection() {
 			while (otherIt != entities.end()) {
 				Entity otherEntity = *otherIt;
 				if (otherEntity != entity) {
+					const NtshEngn::Rigidbody& otherEntityRigidbody = ecs->getComponent<Rigidbody>(otherEntity);
+					if (entityRigidbody.isStatic && otherEntityRigidbody.isStatic) {
+						otherIt++;
+
+						continue;
+					}
+
 					NtshEngn::ColliderShape* otherColliderShape = nullptr;
 
 					NtshEngn::ColliderSphere otherColliderSphere;
