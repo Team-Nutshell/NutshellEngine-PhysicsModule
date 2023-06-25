@@ -82,6 +82,10 @@ namespace NtshEngn {
 		void collisionsResponse();
 
 		NtshEngn::IntersectionInformation intersect(const NtshEngn::ColliderSphere* sphere1, const NtshEngn::ColliderSphere* sphere2);
+		NtshEngn::IntersectionInformation intersect(const NtshEngn::ColliderSphere* sphere, const NtshEngn::ColliderAABB* aabb);
+		NtshEngn::IntersectionInformation intersect(const NtshEngn::ColliderAABB* aabb1, const NtshEngn::ColliderAABB* aabb2);
+
+		NtshEngn::IntersectionInformation intersect(const NtshEngn::ColliderAABB* aabb, const NtshEngn::ColliderSphere* sphere);
 
 		NtshEngn::IntersectionInformation gjk(const NtshEngn::ColliderShape* shape1, const NtshEngn::ColliderShape* shape2);
 

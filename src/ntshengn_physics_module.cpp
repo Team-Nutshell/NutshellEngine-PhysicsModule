@@ -30,6 +30,15 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const NtshE
 	if ((shape1->getType() == NtshEngn::ColliderShapeType::Sphere) && (shape2->getType() == NtshEngn::ColliderShapeType::Sphere)) {
 		return intersect(static_cast<const NtshEngn::ColliderSphere*>(shape1), static_cast<const NtshEngn::ColliderSphere*>(shape2));
 	}
+	else if ((shape1->getType() == NtshEngn::ColliderShapeType::Sphere) && (shape2->getType() == NtshEngn::ColliderShapeType::AABB)) {
+		return intersect(static_cast<const NtshEngn::ColliderSphere*>(shape1), static_cast<const NtshEngn::ColliderAABB*>(shape2));
+	}
+	else if ((shape1->getType() == NtshEngn::ColliderShapeType::AABB) && (shape2->getType() == NtshEngn::ColliderShapeType::Sphere)) {
+		return intersect(static_cast<const NtshEngn::ColliderAABB*>(shape1), static_cast<const NtshEngn::ColliderSphere*>(shape2));
+	}
+	else if ((shape1->getType() == NtshEngn::ColliderShapeType::AABB) && (shape2->getType() == NtshEngn::ColliderShapeType::AABB)) {
+		return intersect(static_cast<const NtshEngn::ColliderAABB*>(shape1), static_cast<const NtshEngn::ColliderAABB*>(shape2));
+	}
 	else {
 		return gjk(shape1, shape2);
 	}
@@ -228,6 +237,83 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const NtshE
 	intersectionInformation.hasIntersected = true;
 	intersectionInformation.intersectionNormal = { intersectionNormal[0], intersectionNormal[1], intersectionNormal[2] };
 	intersectionInformation.intersectionDepth = (sphere1->radius + sphere2->radius) - centerDiffLength;
+
+	return intersectionInformation;
+}
+
+NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const NtshEngn::ColliderSphere* sphere, const NtshEngn::ColliderAABB* aabb) {
+	IntersectionInformation intersectionInformation;
+
+	const float x = std::max(aabb->min[0], std::min(sphere->center[0], aabb->max[0]));
+	const float y = std::max(aabb->min[1], std::min(sphere->center[1], aabb->max[1]));
+	const float z = std::max(aabb->min[2], std::min(sphere->center[2], aabb->max[2]));
+
+	const float distance = std::sqrtf((x - sphere->center[0]) * (x - sphere->center[0]) +
+		(y - sphere->center[1]) * (y - sphere->center[1]) +
+		(z - sphere->center[2]) * (z - sphere->center[2]));
+
+	if (distance >= sphere->radius) {
+		intersectionInformation.hasIntersected = false;
+
+		return intersectionInformation;
+	}
+
+	const nml::vec3 intersectionNormal = nml::normalize(nml::vec3(x, y, z) - nml::vec3(sphere->center.data()));
+
+	intersectionInformation.hasIntersected = true;
+	intersectionInformation.intersectionNormal = { intersectionNormal[0], intersectionNormal[1], intersectionNormal[2] };
+	intersectionInformation.intersectionDepth = sphere->radius - distance;
+
+	return intersectionInformation;
+}
+
+NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const NtshEngn::ColliderAABB* aabb1, const NtshEngn::ColliderAABB* aabb2) {
+	IntersectionInformation intersectionInformation;
+
+	const std::array<std::array<float, 3>, 6> normals = {
+		std::array<float, 3> { -1.0f, 0.0f, 0.0f },
+		{ 1.0f, 0.0f, 0.0f },
+		{ 0.0f, -1.0f, 0.0f },
+		{ 0.0f, 1.0f, 0.0f },
+		{ 0.0f, 0.0f, -1.0f },
+		{ 0.0f, 0.0f, 1.0f }
+	};
+
+	const std::array<float, 6> distances = {
+		aabb2->max[0] - aabb1->min[0],
+		aabb1->max[0] - aabb2->min[0],
+		aabb2->max[1] - aabb1->min[1],
+		aabb1->max[1] - aabb2->min[1],
+		aabb2->max[2] - aabb1->min[2],
+		aabb1->max[2] - aabb2->min[2]
+	};
+
+	uint8_t deepestFace = 0;
+
+	for (uint8_t i = 0; i < 6; i++) {
+		if (distances[i] <= 0.0f) {
+			intersectionInformation.hasIntersected = false;
+
+			return intersectionInformation;
+		}
+
+		if (distances[i] < distances[deepestFace]) {
+			deepestFace = i;
+		}
+	}
+
+	intersectionInformation.hasIntersected = true;
+	intersectionInformation.intersectionNormal = normals[deepestFace];
+	intersectionInformation.intersectionDepth = distances[deepestFace];
+
+	return intersectionInformation;
+}
+
+NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const NtshEngn::ColliderAABB* aabb, const NtshEngn::ColliderSphere* sphere) {
+	IntersectionInformation intersectionInformation = intersect(sphere, aabb);
+	if (intersectionInformation.hasIntersected) {
+		intersectionInformation.intersectionNormal = { intersectionInformation.intersectionNormal[0] * -1.0f, intersectionInformation.intersectionNormal[1] * -1.0f, intersectionInformation.intersectionNormal[2] * -1.0f };
+	}
 
 	return intersectionInformation;
 }
