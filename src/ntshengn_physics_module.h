@@ -61,7 +61,7 @@ namespace NtshEngn {
 
 	class PhysicsModule : public PhysicsModuleInterface {
 	public:
-		PhysicsModule() : PhysicsModuleInterface("NutshellEngine Physics Simple Module") {}
+		PhysicsModule() : PhysicsModuleInterface("NutshellEngine Physics Euler Module") {}
 
 		void init();
 		void update(double dt);
