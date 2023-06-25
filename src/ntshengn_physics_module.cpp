@@ -58,7 +58,9 @@ void NtshEngn::PhysicsModule::eulerIntegrator(float dtSeconds) {
 			Transform& entityTransform = ecs->getComponent<Transform>(entity);
 
 			entityRigidbodyState.acceleration = nml::vec3(entityRigidbody.force.data()) / entityRigidbody.mass;
-			entityRigidbodyState.acceleration += m_gravity;
+			if (entityRigidbody.isAffectedByConstants) {
+				entityRigidbodyState.acceleration += m_gravity;
+			}
 
 			entityRigidbodyState.velocity += entityRigidbodyState.acceleration * dtSeconds;
 			entityRigidbodyState.angularVelocity += nml::vec3(entityRigidbody.torque.data()) * entityRigidbody.inertia * dtSeconds;
@@ -438,9 +440,8 @@ std::pair<nml::vec3, float> NtshEngn::PhysicsModule::epa(const NtshEngn::Collide
 
 			std::vector<std::pair<size_t, size_t>> uniqueEdges;
 			for (size_t i = 0; i < normals.size(); i++) {
-				if (sameDirection(nml::vec3(normals[i]), supp - polytope[faces[i * 3]])) {
-					size_t f = i * 3;
-
+				size_t f = i * 3;
+				if (sameDirection(nml::vec3(normals[i]), supp - polytope[faces[f]])) {
 					addIfUniqueEdge(uniqueEdges, faces, f, f + 1);
 					addIfUniqueEdge(uniqueEdges, faces, f + 1, f + 2);
 					addIfUniqueEdge(uniqueEdges, faces, f + 2, f);
