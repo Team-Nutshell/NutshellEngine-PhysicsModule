@@ -81,6 +81,8 @@ namespace NtshEngn {
 		void collisionsDetection();
 		void collisionsResponse();
 
+		NtshEngn::IntersectionInformation intersect(const NtshEngn::ColliderSphere* sphere1, const NtshEngn::ColliderSphere* sphere2);
+
 		NtshEngn::IntersectionInformation gjk(const NtshEngn::ColliderShape* shape1, const NtshEngn::ColliderShape* shape2);
 
 		bool simplexContainsOrigin(GJKSimplex& simplex, nml::vec3& direction);

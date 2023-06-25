@@ -27,7 +27,12 @@ void NtshEngn::PhysicsModule::destroy() {
 }
 
 NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const NtshEngn::ColliderShape* shape1, const NtshEngn::ColliderShape* shape2) {
-	return gjk(shape1, shape2);
+	if ((shape1->getType() == NtshEngn::ColliderShapeType::Sphere) && (shape2->getType() == NtshEngn::ColliderShapeType::Sphere)) {
+		return intersect(static_cast<const NtshEngn::ColliderSphere*>(shape1), static_cast<const NtshEngn::ColliderSphere*>(shape2));
+	}
+	else {
+		return gjk(shape1, shape2);
+	}
 }
 
 const NtshEngn::ComponentMask NtshEngn::PhysicsModule::getComponentMask() const {
@@ -204,6 +209,29 @@ void NtshEngn::PhysicsModule::collisionsResponse() {
 	m_collisions.clear();
 }
 
+NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const NtshEngn::ColliderSphere* sphere1, const NtshEngn::ColliderSphere* sphere2) {
+	IntersectionInformation intersectionInformation;
+
+	const nml::vec3 sphere1Center = nml::vec3(sphere1->center.data());
+	const nml::vec3 sphere2Center = nml::vec3(sphere2->center.data());
+	const nml::vec3 centerDiff = sphere2Center - sphere1Center;
+	const float centerDiffLength = centerDiff.length();
+
+	if ((centerDiffLength < 0.000001f) || (centerDiffLength >= (sphere1->radius + sphere2->radius))) {
+		intersectionInformation.hasIntersected = false;
+		
+		return intersectionInformation;
+	}
+
+	const nml::vec3 intersectionNormal = nml::normalize(centerDiff);
+
+	intersectionInformation.hasIntersected = true;
+	intersectionInformation.intersectionNormal = { intersectionNormal[0], intersectionNormal[1], intersectionNormal[2] };
+	intersectionInformation.intersectionDepth = (sphere1->radius + sphere2->radius) - centerDiffLength;
+
+	return intersectionInformation;
+}
+
 NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::gjk(const NtshEngn::ColliderShape* shape1, const NtshEngn::ColliderShape* shape2) {
 	IntersectionInformation intersectionInformation;
 
@@ -219,7 +247,7 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::gjk(const NtshEngn::C
 	while (true) {
 		supp = support(shape1, shape2, direction);
 
-		if (nml::dot(supp, direction) < 0.0f) { // No intersection
+		if (nml::dot(supp, direction) <= 0.0f) { // No intersection
 			intersectionInformation.hasIntersected = false;
 
 			return intersectionInformation;
