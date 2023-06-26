@@ -5,14 +5,14 @@ namespace NtshEngn {
 
 	class PhysicsModule : public PhysicsModuleInterface {
 	public:
-		PhysicsModule() : PhysicsModuleInterface("NutshellEngine Physics Test Module") {}
+		PhysicsModule() : PhysicsModuleInterface("NutshellEngine Default Physics Module") {}
 
 		void init();
 		void update(double dt);
 		void destroy();
 
-		// Returns true if the two shapes are intersecting with each other, else, returns false
-		bool intersect(const NtshEngn::ColliderShape* shape1, const NtshEngn::ColliderShape* shape2);
+		// Returns an IntersectionInformation structure containing information about the intersection
+		NtshEngn::IntersectionInformation intersect(const ColliderShape* shape1, const ColliderShape* shape2);
 	};
 
 }

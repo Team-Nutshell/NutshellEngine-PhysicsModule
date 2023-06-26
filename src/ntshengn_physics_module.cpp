@@ -17,12 +17,15 @@ void NtshEngn::PhysicsModule::destroy() {
 	NTSHENGN_MODULE_FUNCTION_NOT_IMPLEMENTED();
 }
 
-bool NtshEngn::PhysicsModule::intersect(const NtshEngn::ColliderShape* shape1, const NtshEngn::ColliderShape* shape2) {
+NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderShape* shape1, const ColliderShape* shape2) {
 	NTSHENGN_UNUSED(shape1);
 	NTSHENGN_UNUSED(shape2);
 	NTSHENGN_MODULE_FUNCTION_NOT_IMPLEMENTED();
 
-	return false;
+	IntersectionInformation intersectionInformation;
+	intersectionInformation.hasIntersected = false;
+
+	return intersectionInformation;
 }
 
 extern "C" NTSHENGN_MODULE_API NtshEngn::PhysicsModuleInterface* createModule() {
