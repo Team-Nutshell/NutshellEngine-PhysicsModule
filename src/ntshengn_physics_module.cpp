@@ -33,11 +33,26 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 	else if ((shape1->getType() == ColliderShapeType::Sphere) && (shape2->getType() == ColliderShapeType::AABB)) {
 		return intersect(static_cast<const ColliderSphere*>(shape1), static_cast<const ColliderAABB*>(shape2));
 	}
+	else if ((shape1->getType() == ColliderShapeType::Sphere) && (shape2->getType() == ColliderShapeType::Capsule)) {
+		return intersect(static_cast<const ColliderSphere*>(shape1), static_cast<const ColliderCapsule*>(shape2));
+	}
+	else if ((shape1->getType() == ColliderShapeType::Capsule) && (shape2->getType() == ColliderShapeType::Sphere)) {
+		return intersect(static_cast<const ColliderCapsule*>(shape1), static_cast<const ColliderSphere*>(shape2));
+	}
 	else if ((shape1->getType() == ColliderShapeType::AABB) && (shape2->getType() == ColliderShapeType::Sphere)) {
 		return intersect(static_cast<const ColliderAABB*>(shape1), static_cast<const ColliderSphere*>(shape2));
 	}
 	else if ((shape1->getType() == ColliderShapeType::AABB) && (shape2->getType() == ColliderShapeType::AABB)) {
 		return intersect(static_cast<const ColliderAABB*>(shape1), static_cast<const ColliderAABB*>(shape2));
+	}
+	else if ((shape1->getType() == ColliderShapeType::AABB) && (shape2->getType() == ColliderShapeType::Capsule)) {
+		return intersect(static_cast<const ColliderAABB*>(shape1), static_cast<const ColliderCapsule*>(shape2));
+	}
+	else if ((shape1->getType() == ColliderShapeType::Capsule) && (shape2->getType() == ColliderShapeType::AABB)) {
+		return intersect(static_cast<const ColliderCapsule*>(shape1), static_cast<const ColliderAABB*>(shape2));
+	}
+	else if ((shape1->getType() == ColliderShapeType::Capsule) && (shape2->getType() == ColliderShapeType::Capsule)) {
+		return intersect(static_cast<const ColliderCapsule*>(shape1), static_cast<const ColliderCapsule*>(shape2));
 	}
 	else {
 		return gjk(shape1, shape2);
@@ -278,7 +293,7 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 	const nml::vec3 intersectionNormal = nml::normalize(centerDiff);
 
 	intersectionInformation.hasIntersected = true;
-	intersectionInformation.intersectionNormal = { intersectionNormal[0], intersectionNormal[1], intersectionNormal[2] };
+	intersectionInformation.intersectionNormal = { intersectionNormal.x, intersectionNormal.y, intersectionNormal.z };
 	intersectionInformation.intersectionDepth = (sphere1->radius + sphere2->radius) - centerDiffLength;
 
 	return intersectionInformation;
@@ -304,8 +319,35 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const NtshE
 	const nml::vec3 intersectionNormal = nml::normalize(nml::vec3(x, y, z) - nml::vec3(sphere->center.data()));
 
 	intersectionInformation.hasIntersected = true;
-	intersectionInformation.intersectionNormal = { intersectionNormal[0], intersectionNormal[1], intersectionNormal[2] };
+	intersectionInformation.intersectionNormal = { intersectionNormal.x, intersectionNormal.y, intersectionNormal.z };
 	intersectionInformation.intersectionDepth = sphere->radius - distance;
+
+	return intersectionInformation;
+}
+
+NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderSphere* sphere, const ColliderCapsule* capsule) {
+	IntersectionInformation intersectionInformation;
+
+	const nml::vec3 sphereCenter = nml::vec3(sphere->center.data());
+	const nml::vec3 capsuleBase = nml::vec3(capsule->base.data());
+	const nml::vec3 capsuleTip = nml::vec3(capsule->tip.data());
+
+	const nml::vec3 closestPointOnCapsule = closestPointOnSegment(sphereCenter, capsuleBase, capsuleTip);
+
+	const nml::vec3 centerDiff = closestPointOnCapsule - sphereCenter;
+	const float centerDiffLength = centerDiff.length();
+
+	if ((centerDiffLength < 0.000001f) || (centerDiffLength >= (sphere->radius + capsule->radius))) {
+		intersectionInformation.hasIntersected = false;
+
+		return intersectionInformation;
+	}
+
+	const nml::vec3 intersectionNormal = nml::normalize(centerDiff);
+
+	intersectionInformation.hasIntersected = true;
+	intersectionInformation.intersectionNormal = { intersectionNormal.x, intersectionNormal.y, intersectionNormal.z };
+	intersectionInformation.intersectionDepth = (sphere->radius + capsule->radius) - centerDiffLength;
 
 	return intersectionInformation;
 }
@@ -352,8 +394,115 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 	return intersectionInformation;
 }
 
+NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderAABB* aabb, const ColliderCapsule* capsule) {
+	IntersectionInformation intersectionInformation;
+
+	const nml::vec3 aabbCenter = getCenter(aabb);
+	const nml::vec3 capsuleBase = nml::vec3(capsule->base.data());
+	const nml::vec3 capsuleTip = nml::vec3(capsule->tip.data());
+
+	const nml::vec3 closestPointOnCapsule = closestPointOnSegment(aabbCenter, capsuleBase, capsuleTip);
+
+	const float x = std::max(aabb->min[0], std::min(closestPointOnCapsule.x, aabb->max[0]));
+	const float y = std::max(aabb->min[1], std::min(closestPointOnCapsule.y, aabb->max[1]));
+	const float z = std::max(aabb->min[2], std::min(closestPointOnCapsule.z, aabb->max[2]));
+
+	const float distance = std::sqrtf((x - closestPointOnCapsule.x) * (x - closestPointOnCapsule.x) +
+		(y - closestPointOnCapsule.y) * (y - closestPointOnCapsule.y) +
+		(z - closestPointOnCapsule.z) * (z - closestPointOnCapsule.z));
+
+	if (distance >= capsule->radius) {
+		intersectionInformation.hasIntersected = false;
+
+		return intersectionInformation;
+	}
+
+	const nml::vec3 intersectionNormal = nml::normalize(closestPointOnCapsule -  nml::vec3(x, y, z));
+
+	intersectionInformation.hasIntersected = true;
+	intersectionInformation.intersectionNormal = { intersectionNormal.x, intersectionNormal.y, intersectionNormal.z };
+	intersectionInformation.intersectionDepth = capsule->radius - distance;
+
+	return intersectionInformation;
+}
+
+NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderCapsule* capsule1, const ColliderCapsule* capsule2) {
+	IntersectionInformation intersectionInformation;
+
+	const nml::vec3 capsule1Base = nml::vec3(capsule1->base.data());
+	const nml::vec3 capsule1Tip = nml::vec3(capsule1->tip.data());
+	const nml::vec3 capsule2Base = nml::vec3(capsule2->base.data());
+	const nml::vec3 capsule2Tip = nml::vec3(capsule2->tip.data());
+
+	const nml::vec3 capsule1Normal = nml::normalize(capsule1Tip - capsule1Base);
+	const nml::vec3 capsule1LineEndOffset = capsule1Normal * capsule1->radius;
+	const nml::vec3 capsule1A = capsule1Base + capsule1LineEndOffset;
+	const nml::vec3 capsule1B = capsule1Tip - capsule1LineEndOffset;
+
+	const nml::vec3 capsule2Normal = nml::normalize(capsule2Tip - capsule2Base);
+	const nml::vec3 capsule2LineEndOffset = capsule2Normal * capsule2->radius;
+	const nml::vec3 capsule2A = capsule2Base + capsule2LineEndOffset;
+	const nml::vec3 capsule2B = capsule2Tip - capsule2LineEndOffset;
+
+	const nml::vec3 v0 = capsule2A - capsule1A;
+	const nml::vec3 v1 = capsule2B - capsule1A;
+	const nml::vec3 v2 = capsule2A - capsule1B;
+	const nml::vec3 v3 = capsule2B - capsule1B;
+
+	const float d0 = nml::dot(v0, v0);
+	const float d1 = nml::dot(v1, v1);
+	const float d2 = nml::dot(v2, v2);
+	const float d3 = nml::dot(v3, v3);
+
+	nml::vec3 capsule1Best;
+	if (d2 < d0 || d2 < d1 || d3 < d0 || d3 < d1) {
+		capsule1Best = capsule1B;
+	}
+	else {
+		capsule1Best = capsule1A;
+	}
+
+	const nml::vec3 capsule2Best = closestPointOnSegment(capsule1Best, capsule2A, capsule2B);
+	capsule1Best = closestPointOnSegment(capsule2Best, capsule1A, capsule1B);
+
+	const nml::vec3 diff = capsule2Best - capsule1Best;
+	const float diffLength = diff.length();
+
+	if (diffLength > (capsule1->radius + capsule2->radius)) {
+		intersectionInformation.hasIntersected = false;
+
+		return intersectionInformation;
+	}
+
+	const nml::vec3 intersectionNormal = nml::normalize(diff);
+
+	intersectionInformation.hasIntersected = true;
+	intersectionInformation.intersectionNormal = { intersectionNormal.x, intersectionNormal.y, intersectionNormal.z };
+	intersectionInformation.intersectionDepth = (capsule1->radius + capsule2->radius) - diffLength;
+
+	return intersectionInformation;
+}
+
+NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderCapsule* capsule, const ColliderSphere* sphere) {
+	IntersectionInformation intersectionInformation = intersect(sphere, capsule);
+	if (intersectionInformation.hasIntersected) {
+		intersectionInformation.intersectionNormal = { intersectionInformation.intersectionNormal[0] * -1.0f, intersectionInformation.intersectionNormal[1] * -1.0f, intersectionInformation.intersectionNormal[2] * -1.0f };
+	}
+
+	return intersectionInformation;
+}
+
 NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderAABB* aabb, const ColliderSphere* sphere) {
 	IntersectionInformation intersectionInformation = intersect(sphere, aabb);
+	if (intersectionInformation.hasIntersected) {
+		intersectionInformation.intersectionNormal = { intersectionInformation.intersectionNormal[0] * -1.0f, intersectionInformation.intersectionNormal[1] * -1.0f, intersectionInformation.intersectionNormal[2] * -1.0f };
+	}
+
+	return intersectionInformation;
+}
+
+NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderCapsule* capsule, const ColliderAABB* aabb) {
+	IntersectionInformation intersectionInformation = intersect(aabb, capsule);
 	if (intersectionInformation.hasIntersected) {
 		intersectionInformation.intersectionNormal = { intersectionInformation.intersectionNormal[0] * -1.0f, intersectionInformation.intersectionNormal[1] * -1.0f, intersectionInformation.intersectionNormal[2] * -1.0f };
 	}
@@ -747,6 +896,16 @@ void NtshEngn::PhysicsModule::transform(ColliderCapsule* capsule, const nml::vec
 
 	capsule->tip = { tipRotation.x + capsule->base[0], tipRotation.y + capsule->base[1], tipRotation.z + capsule->base[2]};
 	capsule->radius *= std::max(std::abs(scale.x), std::max(std::abs(scale.y), std::abs(scale.z)));
+}
+
+nml::vec3 NtshEngn::PhysicsModule::closestPointOnSegment(const nml::vec3& point, const nml::vec3& segmentA, const nml::vec3& segmentB) {
+	const nml::vec3 ab = segmentB - segmentA;
+	const nml::vec3 ap = point - segmentA;
+	const nml::vec3 bp = point - segmentB;
+
+	const float e = dot(ap, ab);
+
+	return segmentA + (std::min(std::max(e, 0.0f), 1.0f) * ab);
 }
 
 extern "C" NTSHENGN_MODULE_API NtshEngn::PhysicsModuleInterface* createModule() {

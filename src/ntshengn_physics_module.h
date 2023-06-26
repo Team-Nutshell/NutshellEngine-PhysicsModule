@@ -83,9 +83,14 @@ namespace NtshEngn {
 
 		IntersectionInformation intersect(const ColliderSphere* sphere1, const ColliderSphere* sphere2);
 		IntersectionInformation intersect(const ColliderSphere* sphere, const ColliderAABB* aabb);
+		IntersectionInformation intersect(const ColliderSphere* sphere, const ColliderCapsule* capsule);
 		IntersectionInformation intersect(const ColliderAABB* aabb1, const ColliderAABB* aabb2);
+		IntersectionInformation intersect(const ColliderAABB* aabb, const ColliderCapsule* capsule);
+		IntersectionInformation intersect(const ColliderCapsule* capsule1, const ColliderCapsule* capsule2);
 
+		IntersectionInformation intersect(const ColliderCapsule* capsule, const ColliderSphere* sphere);
 		IntersectionInformation intersect(const ColliderAABB* aabb, const ColliderSphere* sphere);
+		IntersectionInformation intersect(const ColliderCapsule* capsule, const ColliderAABB* aabb);
 
 		IntersectionInformation gjk(const ColliderShape* shape1, const ColliderShape* shape2);
 
@@ -118,6 +123,8 @@ namespace NtshEngn {
 		void transform(ColliderSphere* sphere, const nml::vec3& translation, const nml::vec3& scale);
 		void transform(ColliderAABB* aabb, const nml::vec3& translation, const nml::vec3& rotation, const nml::vec3& scale);
 		void transform(ColliderCapsule* capsule, const nml::vec3& translation, const nml::vec3& rotation, const nml::vec3& scale);
+
+		nml::vec3 closestPointOnSegment(const nml::vec3& point, const nml::vec3& segmentA, const nml::vec3& segmentB);
 
 	private:
 		const nml::vec3 m_gravity = nml::vec3(0.0f, -9.81f, 0.0f);
