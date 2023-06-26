@@ -244,22 +244,18 @@ void NtshEngn::PhysicsModule::collisionsResponse() {
 		}
 
 		// Position correction
-		const nml::vec3 correction = (std::max(collision.intersectionDepth - 0.01f, 0.0f) * 0.8f * collision.intersectionNormal / (invMass1 + invMass2));
+		const nml::vec3 correction = std::max(collision.intersectionDepth, 0.0f) * collision.intersectionNormal;
 
 		if (!entity1Rigidbody.isStatic) {
-			const nml::vec3 entity1PositionCorrection = correction * invMass1;
-
-			entity1Transform.position[0] -= entity1PositionCorrection.x;
-			entity1Transform.position[1] -= entity1PositionCorrection.y;
-			entity1Transform.position[2] -= entity1PositionCorrection.z;
+			entity1Transform.position[0] -= correction.x;
+			entity1Transform.position[1] -= correction.y;
+			entity1Transform.position[2] -= correction.z;
 		}
 
 		if (!entity2Rigidbody.isStatic) {
-			const nml::vec3 entity2PositionCorrected = correction * invMass2;
-
-			entity2Transform.position[0] += entity2PositionCorrected.x;
-			entity2Transform.position[1] += entity2PositionCorrected.y;
-			entity2Transform.position[2] += entity2PositionCorrected.z;
+			entity2Transform.position[0] += correction.x;
+			entity2Transform.position[1] += correction.y;
+			entity2Transform.position[2] += correction.z;
 		}
 	}
 	m_collisions.clear();
