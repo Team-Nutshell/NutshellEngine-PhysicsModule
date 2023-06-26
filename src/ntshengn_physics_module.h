@@ -81,13 +81,13 @@ namespace NtshEngn {
 		void collisionsDetection();
 		void collisionsResponse();
 
-		NtshEngn::IntersectionInformation intersect(const NtshEngn::ColliderSphere* sphere1, const NtshEngn::ColliderSphere* sphere2);
-		NtshEngn::IntersectionInformation intersect(const NtshEngn::ColliderSphere* sphere, const NtshEngn::ColliderAABB* aabb);
-		NtshEngn::IntersectionInformation intersect(const NtshEngn::ColliderAABB* aabb1, const NtshEngn::ColliderAABB* aabb2);
+		IntersectionInformation intersect(const ColliderSphere* sphere1, const ColliderSphere* sphere2);
+		IntersectionInformation intersect(const ColliderSphere* sphere, const ColliderAABB* aabb);
+		IntersectionInformation intersect(const ColliderAABB* aabb1, const ColliderAABB* aabb2);
 
-		NtshEngn::IntersectionInformation intersect(const NtshEngn::ColliderAABB* aabb, const NtshEngn::ColliderSphere* sphere);
+		IntersectionInformation intersect(const ColliderAABB* aabb, const ColliderSphere* sphere);
 
-		NtshEngn::IntersectionInformation gjk(const NtshEngn::ColliderShape* shape1, const NtshEngn::ColliderShape* shape2);
+		IntersectionInformation gjk(const ColliderShape* shape1, const ColliderShape* shape2);
 
 		bool simplexContainsOrigin(GJKSimplex& simplex, nml::vec3& direction);
 
@@ -97,27 +97,27 @@ namespace NtshEngn {
 
 		bool sameDirection(const nml::vec3& a, const nml::vec3& b);
 
-		nml::vec3 getCenter(const NtshEngn::ColliderShape* shape);
-		nml::vec3 getCenter(const NtshEngn::ColliderSphere* sphere);
-		nml::vec3 getCenter(const NtshEngn::ColliderAABB* aabb);
-		nml::vec3 getCenter(const NtshEngn::ColliderCapsule* capsule);
+		nml::vec3 getCenter(const ColliderShape* shape);
+		nml::vec3 getCenter(const ColliderSphere* sphere);
+		nml::vec3 getCenter(const ColliderAABB* aabb);
+		nml::vec3 getCenter(const ColliderCapsule* capsule);
 
-		nml::vec3 support(const NtshEngn::ColliderShape* shape1, const NtshEngn::ColliderShape* shape2, const nml::vec3& direction);
+		nml::vec3 support(const ColliderShape* shape1, const ColliderShape* shape2, const nml::vec3& direction);
 
-		nml::vec3 getFarthestPointInDirection(const NtshEngn::ColliderShape* shape, const nml::vec3& direction);
-		nml::vec3 getFarthestPointInDirection(const NtshEngn::ColliderSphere* sphere, const nml::vec3& direction);
-		nml::vec3 getFarthestPointInDirection(const NtshEngn::ColliderAABB* aabb, const nml::vec3& direction);
-		nml::vec3 getFarthestPointInDirection(const NtshEngn::ColliderCapsule* capsule, const nml::vec3& direction);
+		nml::vec3 getFarthestPointInDirection(const ColliderShape* shape, const nml::vec3& direction);
+		nml::vec3 getFarthestPointInDirection(const ColliderSphere* sphere, const nml::vec3& direction);
+		nml::vec3 getFarthestPointInDirection(const ColliderAABB* aabb, const nml::vec3& direction);
+		nml::vec3 getFarthestPointInDirection(const ColliderCapsule* capsule, const nml::vec3& direction);
 
-		std::pair<nml::vec3, float> epa(const NtshEngn::ColliderShape* shape1, const NtshEngn::ColliderShape* shape2, GJKSimplex& simplex);
+		std::pair<nml::vec3, float> epa(const ColliderShape* shape1, const ColliderShape* shape2, GJKSimplex& simplex);
 
 		std::pair<std::vector<nml::vec4>, size_t> getPolytopeNormals(const std::vector<nml::vec3>& polytope, const std::vector<size_t>& faces);
 		void addIfUniqueEdge(std::vector<std::pair<size_t, size_t>>& edges, const std::vector<size_t>& polytopeIndices, size_t a, size_t b);
 
-		void transform(NtshEngn::ColliderShape* shape, const nml::vec3& translation, const nml::vec3& rotation, const nml::vec3& scale);
-		void transform(NtshEngn::ColliderSphere* sphere, const nml::vec3& translation, const nml::vec3& scale);
-		void transform(NtshEngn::ColliderAABB* aabb, const nml::vec3& translation, const nml::vec3& rotation, const nml::vec3& scale);
-		void transform(NtshEngn::ColliderCapsule* capsule, const nml::vec3& translation, const nml::vec3& rotation, const nml::vec3& scale);
+		void transform(ColliderShape* shape, const nml::vec3& translation, const nml::vec3& rotation, const nml::vec3& scale);
+		void transform(ColliderSphere* sphere, const nml::vec3& translation, const nml::vec3& scale);
+		void transform(ColliderAABB* aabb, const nml::vec3& translation, const nml::vec3& rotation, const nml::vec3& scale);
+		void transform(ColliderCapsule* capsule, const nml::vec3& translation, const nml::vec3& rotation, const nml::vec3& scale);
 
 	private:
 		const nml::vec3 m_gravity = nml::vec3(0.0f, -9.81f, 0.0f);
