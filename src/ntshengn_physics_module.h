@@ -4,60 +4,60 @@
 #include "../external/nml/include/nml.h"
 #include <unordered_map>
 
+struct RigidbodyState {
+	nml::vec3 acceleration = nml::vec3(0.0f, 0.0f, 0.0f);
+	nml::vec3 velocity = nml::vec3(0.0f, 0.0f, 0.0f);
+	nml::vec3 angularVelocity = nml::vec3(0.0f, 0.0f, 0.0f);
+};
+
+struct Collision {
+	NtshEngn::Entity entity1;
+	NtshEngn::Entity entity2;
+	nml::vec3 intersectionNormal;
+	float intersectionDepth;
+};
+
+class GJKSimplex {
+public:
+	GJKSimplex& operator=(std::initializer_list<nml::vec3> list) {
+		for (std::initializer_list<nml::vec3>::iterator it = list.begin(); it != list.end(); it++) {
+			m_points[std::distance(list.begin(), it)] = *it;
+		}
+		m_size = list.size();
+
+		return *this;
+	}
+
+	void push_front(const nml::vec3& point) {
+		m_points = { point, m_points[0], m_points[1], m_points[2] };
+		m_size = std::min(m_size + 1, static_cast<size_t>(4));
+	}
+
+	nml::vec3& operator[](size_t i) {
+		return m_points[i];
+	}
+
+	size_t size() {
+		return m_size;
+	}
+
+	std::array<nml::vec3, 4>::iterator begin() {
+		return m_points.begin();
+	}
+
+	std::array<nml::vec3, 4>::iterator end() {
+		return m_points.end() - (4 - m_size);
+	}
+
+private:
+	std::array<nml::vec3, 4> m_points = { nml::vec3(0.0f, 0.0f, 0.0f),
+		nml::vec3(0.0f, 0.0f, 0.0f),
+		nml::vec3(0.0f, 0.0f, 0.0f),
+		nml::vec3(0.0f, 0.0f, 0.0f) };
+	size_t m_size = 0;
+};
+
 namespace NtshEngn {
-
-	struct RigidbodyState {
-		nml::vec3 acceleration = nml::vec3(0.0f, 0.0f, 0.0f);
-		nml::vec3 velocity = nml::vec3(0.0f, 0.0f, 0.0f);
-		nml::vec3 angularVelocity = nml::vec3(0.0f, 0.0f, 0.0f);
-	};
-
-	struct Collision {
-		Entity entity1;
-		Entity entity2;
-		nml::vec3 intersectionNormal;
-		float intersectionDepth;
-	};
-
-	class GJKSimplex {
-	public:
-		GJKSimplex& operator=(std::initializer_list<nml::vec3> list) {
-			for (std::initializer_list<nml::vec3>::iterator it = list.begin(); it != list.end(); it++) {
-				m_points[std::distance(list.begin(), it)] = *it;
-			}
-			m_size = list.size();
-
-			return *this;
-		}
-
-		void push_front(const nml::vec3& point) {
-			m_points = { point, m_points[0], m_points[1], m_points[2] };
-			m_size = std::min(m_size + 1, static_cast<size_t>(4));
-		}
-
-		nml::vec3& operator[](size_t i) {
-			return m_points[i];
-		}
-
-		size_t size() {
-			return m_size;
-		}
-
-		std::array<nml::vec3, 4>::iterator begin() {
-			return m_points.begin();
-		}
-
-		std::array<nml::vec3, 4>::iterator end() {
-			return m_points.end() - (4 - m_size);
-		}
-
-	private:
-		std::array<nml::vec3, 4> m_points = { nml::vec3(0.0f, 0.0f, 0.0f),
-			nml::vec3(0.0f, 0.0f, 0.0f),
-			nml::vec3(0.0f, 0.0f, 0.0f),
-			nml::vec3(0.0f, 0.0f, 0.0f) };
-		size_t m_size = 0;
-	};
 
 	class PhysicsModule : public PhysicsModuleInterface {
 	public:
@@ -67,7 +67,7 @@ namespace NtshEngn {
 		void update(double dt);
 		void destroy();
 
-		// Returns true if the two shapes are intersecting with each other, else, returns false
+		// Returns an IntersectionInformation structure containing information about the intersection
 		NtshEngn::IntersectionInformation intersect(const NtshEngn::ColliderShape* shape1, const NtshEngn::ColliderShape* shape2);
 
 	public:
