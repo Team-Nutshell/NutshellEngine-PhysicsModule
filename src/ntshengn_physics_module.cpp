@@ -407,43 +407,14 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 	const nml::vec3 capsule2Base = nml::vec3(capsule2->base.data());
 	const nml::vec3 capsule2Tip = nml::vec3(capsule2->tip.data());
 
-	const nml::vec3 capsule1Normal = nml::normalize(capsule1Tip - capsule1Base);
-	const nml::vec3 capsule1LineEndOffset = capsule1Normal * capsule1->radius;
-	const nml::vec3 capsule1A = capsule1Base + capsule1LineEndOffset;
-	const nml::vec3 capsule1B = capsule1Tip - capsule1LineEndOffset;
-
-	const nml::vec3 capsule2Normal = nml::normalize(capsule2Tip - capsule2Base);
-	const nml::vec3 capsule2LineEndOffset = capsule2Normal * capsule2->radius;
-	const nml::vec3 capsule2A = capsule2Base + capsule2LineEndOffset;
-	const nml::vec3 capsule2B = capsule2Tip - capsule2LineEndOffset;
-
-	const nml::vec3 v0 = capsule2A - capsule1A;
-	const nml::vec3 v1 = capsule2B - capsule1A;
-	const nml::vec3 v2 = capsule2A - capsule1B;
-	const nml::vec3 v3 = capsule2B - capsule1B;
-
-	const float d0 = nml::dot(v0, v0);
-	const float d1 = nml::dot(v1, v1);
-	const float d2 = nml::dot(v2, v2);
-	const float d3 = nml::dot(v3, v3);
-
-	nml::vec3 capsule1Best;
-	if ((d2 < d0) || (d2 < d1) || (d3 < d0) || (d3 < d1)) {
-		capsule1Best = capsule1B;
-	}
-	else {
-		capsule1Best = capsule1A;
-	}
-
-	const nml::vec3 capsule2Best = closestPointOnSegment(capsule1Best, capsule2A, capsule2B);
-	capsule1Best = closestPointOnSegment(capsule2Best, capsule1A, capsule1B);
+	const std::pair<nml::vec3, nml::vec3> bestOnCapsules = closestPointSegmentSegment(capsule1Base, capsule1Tip, capsule2Base, capsule2Tip);
 
 	ColliderSphere sphereFromCapsule1;
-	sphereFromCapsule1.center = { capsule1Best.x, capsule1Best.y, capsule1Best.z };
+	sphereFromCapsule1.center = { bestOnCapsules.first.x, bestOnCapsules.first.y, bestOnCapsules.first.z };
 	sphereFromCapsule1.radius = capsule1->radius;
 
 	ColliderSphere sphereFromCapsule2;
-	sphereFromCapsule2.center = { capsule2Best.x, capsule2Best.y, capsule2Best.z };
+	sphereFromCapsule2.center = { bestOnCapsules.second.x, bestOnCapsules.second.y, bestOnCapsules.second.z };
 	sphereFromCapsule2.radius = capsule2->radius;
 
 	return intersect(&sphereFromCapsule1, &sphereFromCapsule2);
@@ -871,6 +842,63 @@ nml::vec3 NtshEngn::PhysicsModule::closestPointOnSegment(const nml::vec3& point,
 	const float e = dot(ap, ab) / dot(ab, ab);
 
 	return segmentA + (std::min(std::max(e, 0.0f), 1.0f) * ab);
+}
+
+std::pair<nml::vec3, nml::vec3> NtshEngn::PhysicsModule::closestPointSegmentSegment(const nml::vec3& segmentA1, const nml::vec3& segmentA2, const nml::vec3& segmentB1, const nml::vec3& segmentB2) {
+	const nml::vec3 segmentA = segmentA2 - segmentA1;
+	const nml::vec3 segmentB = segmentB2 - segmentB1;
+	const nml::vec3 r = segmentA1 - segmentB1;
+	const float segmentASqLength = dot(segmentA, segmentA);
+	const float segmentBSqLength = dot(segmentB, segmentB);
+	const float f = dot(segmentB, r);
+
+	float s = 0.0f;
+	float t = 0.0f;
+
+	if ((segmentASqLength <= 0.000001f) && (segmentBSqLength <= 0.000001f)) {
+		return std::pair<nml::vec3, nml::vec3>(segmentA1, segmentB1);
+	}
+
+	if (segmentASqLength <= 0.000001f) {
+		s = 0.0f;
+		t = f / segmentBSqLength;
+		t = std::max(std::min(t, 1.0f), 0.0f);
+	}
+	else {
+		const float c = nml::dot(segmentA, r);
+		if (segmentBSqLength <= 0.000001f) {
+			t = 0.0f;
+			s = -c / segmentASqLength;
+			s = std::max(std::min(s, 1.0f), 0.0f);
+		}
+		else {
+			const float b = nml::dot(segmentA, segmentB);
+			const float denom = (segmentASqLength * segmentBSqLength) - (b * b);
+
+			if (denom != 0.0f) {
+				s = ((b * f) - (c * segmentBSqLength)) / denom;
+				s = std::max(std::min(s, 1.0f), 0.0f);
+			}
+			else {
+				s = 0.0f;
+			}
+
+			t = ((b * s) + f) / segmentBSqLength;
+
+			if (t < 0.0f) {
+				t = 0.0f;
+				s = -c / segmentASqLength;
+				s = std::max(std::min(s, 1.0f), 0.0f);
+			}
+			else if (t > 1.0f) {
+				t = 1.0f;
+				s = (b - c) / segmentASqLength;
+				s = std::max(std::min(s, 1.0f), 0.0f);
+			}
+		}
+	}
+
+	return std::pair<nml::vec3, nml::vec3>(segmentA1 + (segmentA * s), segmentB1 + (segmentB * t));
 }
 
 extern "C" NTSHENGN_MODULE_API NtshEngn::PhysicsModuleInterface* createModule() {

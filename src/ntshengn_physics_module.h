@@ -125,6 +125,7 @@ namespace NtshEngn {
 		void transform(ColliderCapsule* capsule, const nml::vec3& translation, const nml::vec3& rotation, const nml::vec3& scale);
 
 		nml::vec3 closestPointOnSegment(const nml::vec3& point, const nml::vec3& segmentA, const nml::vec3& segmentB);
+		std::pair<nml::vec3, nml::vec3> closestPointSegmentSegment(const nml::vec3& segmentA1, const nml::vec3& segmentA2, const nml::vec3& segmentB1, const nml::vec3& segmentB2);
 
 	private:
 		const nml::vec3 m_gravity = nml::vec3(0.0f, -9.81f, 0.0f);
