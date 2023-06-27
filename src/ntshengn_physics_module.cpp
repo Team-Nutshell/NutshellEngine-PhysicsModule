@@ -901,9 +901,8 @@ void NtshEngn::PhysicsModule::transform(ColliderCapsule* capsule, const nml::vec
 nml::vec3 NtshEngn::PhysicsModule::closestPointOnSegment(const nml::vec3& point, const nml::vec3& segmentA, const nml::vec3& segmentB) {
 	const nml::vec3 ab = segmentB - segmentA;
 	const nml::vec3 ap = point - segmentA;
-	const nml::vec3 bp = point - segmentB;
 
-	const float e = dot(ap, ab);
+	const float e = dot(ap, ab) / dot(ab, ab);
 
 	return segmentA + (std::min(std::max(e, 0.0f), 1.0f) * ab);
 }
