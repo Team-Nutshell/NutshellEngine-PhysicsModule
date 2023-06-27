@@ -310,7 +310,7 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const NtshE
 		(y - sphere->center[1]) * (y - sphere->center[1]) +
 		(z - sphere->center[2]) * (z - sphere->center[2]));
 
-	if (distance >= sphere->radius) {
+	if ((distance < 0.000001f) || (distance >= sphere->radius)) {
 		intersectionInformation.hasIntersected = false;
 
 		return intersectionInformation;
@@ -411,7 +411,7 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 		(y - closestPointOnCapsule.y) * (y - closestPointOnCapsule.y) +
 		(z - closestPointOnCapsule.z) * (z - closestPointOnCapsule.z));
 
-	if (distance >= capsule->radius) {
+	if ((distance < 0.000001f) || (distance >= capsule->radius)) {
 		intersectionInformation.hasIntersected = false;
 
 		return intersectionInformation;
