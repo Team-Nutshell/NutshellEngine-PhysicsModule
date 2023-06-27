@@ -299,7 +299,7 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 	return intersectionInformation;
 }
 
-NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const NtshEngn::ColliderSphere* sphere, const NtshEngn::ColliderAABB* aabb) {
+NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderSphere* sphere, const ColliderAABB* aabb) {
 	IntersectionInformation intersectionInformation;
 
 	const float x = std::max(aabb->min[0], std::min(sphere->center[0], aabb->max[0]));
