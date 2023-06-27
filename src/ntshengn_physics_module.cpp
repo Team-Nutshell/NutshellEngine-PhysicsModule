@@ -866,6 +866,7 @@ std::pair<nml::vec3, nml::vec3> NtshEngn::PhysicsModule::closestPointSegmentSegm
 	}
 	else {
 		const float c = nml::dot(segmentA, r);
+
 		if (segmentBSqLength <= 0.000001f) {
 			t = 0.0f;
 			s = -c / segmentASqLength;
@@ -873,8 +874,8 @@ std::pair<nml::vec3, nml::vec3> NtshEngn::PhysicsModule::closestPointSegmentSegm
 		}
 		else {
 			const float b = nml::dot(segmentA, segmentB);
-			const float denom = (segmentASqLength * segmentBSqLength) - (b * b);
 
+			const float denom = (segmentASqLength * segmentBSqLength) - (b * b);
 			if (denom != 0.0f) {
 				s = ((b * f) - (c * segmentBSqLength)) / denom;
 				s = std::max(std::min(s, 1.0f), 0.0f);
@@ -884,7 +885,6 @@ std::pair<nml::vec3, nml::vec3> NtshEngn::PhysicsModule::closestPointSegmentSegm
 			}
 
 			t = ((b * s) + f) / segmentBSqLength;
-
 			if (t < 0.0f) {
 				t = 0.0f;
 				s = -c / segmentASqLength;
