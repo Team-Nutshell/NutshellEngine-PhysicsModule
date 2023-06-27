@@ -334,22 +334,11 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 
 	const nml::vec3 closestPointOnCapsule = closestPointOnSegment(sphereCenter, capsuleBase, capsuleTip);
 
-	const nml::vec3 centerDiff = closestPointOnCapsule - sphereCenter;
-	const float centerDiffLength = centerDiff.length();
+	ColliderSphere sphereFromCapsule;
+	sphereFromCapsule.center = { closestPointOnCapsule.x, closestPointOnCapsule.y, closestPointOnCapsule.z };
+	sphereFromCapsule.radius = capsule->radius;
 
-	if ((centerDiffLength < 0.000001f) || (centerDiffLength >= (sphere->radius + capsule->radius))) {
-		intersectionInformation.hasIntersected = false;
-
-		return intersectionInformation;
-	}
-
-	const nml::vec3 intersectionNormal = nml::normalize(centerDiff);
-
-	intersectionInformation.hasIntersected = true;
-	intersectionInformation.intersectionNormal = { intersectionNormal.x, intersectionNormal.y, intersectionNormal.z };
-	intersectionInformation.intersectionDepth = (sphere->radius + capsule->radius) - centerDiffLength;
-
-	return intersectionInformation;
+	return intersect(sphere, &sphereFromCapsule);
 }
 
 NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderAABB* aabb1, const ColliderAABB* aabb2) {
@@ -403,27 +392,11 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 
 	const nml::vec3 closestPointOnCapsule = closestPointOnSegment(aabbCenter, capsuleBase, capsuleTip);
 
-	const float x = std::max(aabb->min[0], std::min(closestPointOnCapsule.x, aabb->max[0]));
-	const float y = std::max(aabb->min[1], std::min(closestPointOnCapsule.y, aabb->max[1]));
-	const float z = std::max(aabb->min[2], std::min(closestPointOnCapsule.z, aabb->max[2]));
+	ColliderSphere sphereFromCapsule;
+	sphereFromCapsule.center = { closestPointOnCapsule.x, closestPointOnCapsule.y, closestPointOnCapsule.z };
+	sphereFromCapsule.radius = capsule->radius;
 
-	const float distance = std::sqrtf((x - closestPointOnCapsule.x) * (x - closestPointOnCapsule.x) +
-		(y - closestPointOnCapsule.y) * (y - closestPointOnCapsule.y) +
-		(z - closestPointOnCapsule.z) * (z - closestPointOnCapsule.z));
-
-	if ((distance < 0.000001f) || (distance >= capsule->radius)) {
-		intersectionInformation.hasIntersected = false;
-
-		return intersectionInformation;
-	}
-
-	const nml::vec3 intersectionNormal = nml::normalize(closestPointOnCapsule -  nml::vec3(x, y, z));
-
-	intersectionInformation.hasIntersected = true;
-	intersectionInformation.intersectionNormal = { intersectionNormal.x, intersectionNormal.y, intersectionNormal.z };
-	intersectionInformation.intersectionDepth = capsule->radius - distance;
-
-	return intersectionInformation;
+	return intersect(aabb, &sphereFromCapsule);
 }
 
 NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderCapsule* capsule1, const ColliderCapsule* capsule2) {
@@ -465,22 +438,15 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 	const nml::vec3 capsule2Best = closestPointOnSegment(capsule1Best, capsule2A, capsule2B);
 	capsule1Best = closestPointOnSegment(capsule2Best, capsule1A, capsule1B);
 
-	const nml::vec3 diff = capsule2Best - capsule1Best;
-	const float diffLength = diff.length();
+	ColliderSphere sphereFromCapsule1;
+	sphereFromCapsule1.center = { capsule1Best.x, capsule1Best.y, capsule1Best.z };
+	sphereFromCapsule1.radius = capsule1->radius;
 
-	if (diffLength > (capsule1->radius + capsule2->radius)) {
-		intersectionInformation.hasIntersected = false;
+	ColliderSphere sphereFromCapsule2;
+	sphereFromCapsule2.center = { capsule2Best.x, capsule2Best.y, capsule2Best.z };
+	sphereFromCapsule2.radius = capsule2->radius;
 
-		return intersectionInformation;
-	}
-
-	const nml::vec3 intersectionNormal = nml::normalize(diff);
-
-	intersectionInformation.hasIntersected = true;
-	intersectionInformation.intersectionNormal = { intersectionNormal.x, intersectionNormal.y, intersectionNormal.z };
-	intersectionInformation.intersectionDepth = (capsule1->radius + capsule2->radius) - diffLength;
-
-	return intersectionInformation;
+	return intersect(&sphereFromCapsule1, &sphereFromCapsule2);
 }
 
 NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderCapsule* capsule, const ColliderSphere* sphere) {
