@@ -428,7 +428,7 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 	const float d3 = nml::dot(v3, v3);
 
 	nml::vec3 capsule1Best;
-	if (d2 < d0 || d2 < d1 || d3 < d0 || d3 < d1) {
+	if ((d2 < d0) || (d2 < d1) || (d3 < d0) || (d3 < d1)) {
 		capsule1Best = capsule1B;
 	}
 	else {
