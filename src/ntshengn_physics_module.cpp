@@ -362,7 +362,7 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 		aabb1->max[2] - aabb2->min[2]
 	};
 
-	uint8_t deepestFace = 0;
+	uint8_t collidedFace = 0;
 
 	for (uint8_t i = 0; i < 6; i++) {
 		if (distances[i] <= 0.0f) {
@@ -371,14 +371,14 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 			return intersectionInformation;
 		}
 
-		if (distances[i] < distances[deepestFace]) {
-			deepestFace = i;
+		if (distances[i] < distances[collidedFace]) {
+			collidedFace = i;
 		}
 	}
 
 	intersectionInformation.hasIntersected = true;
-	intersectionInformation.intersectionNormal = normals[deepestFace];
-	intersectionInformation.intersectionDepth = distances[deepestFace];
+	intersectionInformation.intersectionNormal = normals[collidedFace];
+	intersectionInformation.intersectionDepth = distances[collidedFace];
 
 	return intersectionInformation;
 }
