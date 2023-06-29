@@ -92,7 +92,6 @@ void NtshEngn::PhysicsModule::eulerIntegrator(float dtSeconds) {
 			}
 
 			entityRigidbodyState.velocity += entityRigidbodyState.acceleration * dtSeconds;
-			entityRigidbodyState.angularVelocity += nml::vec3(entityRigidbody.torque.data()) * entityRigidbody.inertia * dtSeconds;
 
 			entityTransform.position[0] += entityRigidbodyState.velocity.x * dtSeconds;
 			entityTransform.position[1] += entityRigidbodyState.velocity.y * dtSeconds;

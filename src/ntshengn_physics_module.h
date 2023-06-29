@@ -7,7 +7,6 @@
 struct RigidbodyState {
 	nml::vec3 acceleration = nml::vec3(0.0f, 0.0f, 0.0f);
 	nml::vec3 velocity = nml::vec3(0.0f, 0.0f, 0.0f);
-	nml::vec3 angularVelocity = nml::vec3(0.0f, 0.0f, 0.0f);
 };
 
 struct Collision {
