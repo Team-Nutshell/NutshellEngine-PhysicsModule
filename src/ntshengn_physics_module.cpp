@@ -107,8 +107,12 @@ void NtshEngn::PhysicsModule::eulerIntegrator(float dtSeconds) {
 }
 
 void NtshEngn::PhysicsModule::collisionsDetection() {
-	std::set<Entity>::iterator it = entities.begin();
-	while (it != entities.end()) {
+	std::mutex mutex;
+
+	jobSystem->dispatch(static_cast<uint32_t>(entities.size()), (static_cast<uint32_t>(entities.size()) / jobSystem->getNumThreads()) + 1, [this, &mutex](JobDispatchArguments args) {
+		std::set<Entity>::iterator it = entities.begin();
+		std::advance(it, args.jobIndex);
+
 		Entity entity = *it;
 
 		const Rigidbody& entityRigidbody = ecs->getComponent<Rigidbody>(entity);
@@ -176,7 +180,10 @@ void NtshEngn::PhysicsModule::collisionsDetection() {
 							collision.entity2 = otherEntity;
 							collision.intersectionNormal = nml::vec3(intersectionInformation.intersectionNormal.data());
 							collision.intersectionDepth = intersectionInformation.intersectionDepth;
+
+							std::unique_lock<std::mutex> lock(mutex);
 							m_collisions.push_back(collision);
+							lock.unlock();
 						}
 					}
 				}
@@ -184,9 +191,9 @@ void NtshEngn::PhysicsModule::collisionsDetection() {
 				otherIt++;
 			}
 		}
+		});
 
-		it++;
-	}
+	jobSystem->wait();
 }
 
 void NtshEngn::PhysicsModule::collisionsResponse() {
