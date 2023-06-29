@@ -313,7 +313,7 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 	const float y = std::max(aabb->min[1], std::min(sphere->center[1], aabb->max[1]));
 	const float z = std::max(aabb->min[2], std::min(sphere->center[2], aabb->max[2]));
 
-	const float distance = std::sqrtf((x - sphere->center[0]) * (x - sphere->center[0]) +
+	const float distance = std::sqrt((x - sphere->center[0]) * (x - sphere->center[0]) +
 		(y - sphere->center[1]) * (y - sphere->center[1]) +
 		(z - sphere->center[2]) * (z - sphere->center[2]));
 
