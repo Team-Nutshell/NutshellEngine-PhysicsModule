@@ -1,6 +1,6 @@
 #pragma once
-#include "../external/Common/module_interfaces/ntshengn_physics_module_interface.h"
-#include "../external/Common/ecs/ntshengn_ecs.h"
+#include "../Common/module_interfaces/ntshengn_physics_module_interface.h"
+#include "../Common/ecs/ntshengn_ecs.h"
 #include "../external/nml/include/nml.h"
 #include <unordered_map>
 
