@@ -67,7 +67,7 @@ namespace NtshEngn {
 		void destroy();
 
 		// Returns an IntersectionInformation structure containing information about the intersection
-		NtshEngn::IntersectionInformation intersect(const NtshEngn::ColliderShape* shape1, const NtshEngn::ColliderShape* shape2);
+		IntersectionInformation intersect(const ColliderShape* shape1, const ColliderShape* shape2);
 
 	public:
 		const ComponentMask getComponentMask() const;
