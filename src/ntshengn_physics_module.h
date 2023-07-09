@@ -12,7 +12,7 @@ namespace NtshEngn {
 		void destroy();
 
 		// Returns an IntersectionInformation structure containing information about the intersection
-		NtshEngn::IntersectionInformation intersect(const ColliderShape* shape1, const ColliderShape* shape2);
+		IntersectionInformation intersect(const ColliderShape* shape1, const ColliderShape* shape2);
 	};
 
 }
