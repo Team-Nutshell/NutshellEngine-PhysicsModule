@@ -814,8 +814,8 @@ void NtshEngn::PhysicsModule::transform(ColliderAABB* aabb, const nml::vec3& tra
 
 	for (uint8_t i = 0; i < 3; i++) {
 		for (uint8_t j = 0; j < 3; j++) {
-			a = rotationMatrix[i][j] * aabb->min[j] * std::abs(scale[i]);
-			b = rotationMatrix[i][j] * aabb->max[j] * std::abs(scale[i]);
+			a = rotationMatrix[j][i] * aabb->min[j] * std::abs(scale[i]);
+			b = rotationMatrix[j][i] * aabb->max[j] * std::abs(scale[i]);
 			
 			newAABB.min[i] += (a < b) ? a : b;
 			newAABB.max[i] += (a < b) ? b : a;
