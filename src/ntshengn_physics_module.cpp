@@ -86,7 +86,7 @@ void NtshEngn::PhysicsModule::eulerIntegrator(float dtSeconds) {
 
 			Transform& entityTransform = ecs->getComponent<Transform>(entity);
 
-			entityRigidbodyState.acceleration = nml::vec3(entityRigidbody.force.data()) / entityRigidbody.mass;
+			entityRigidbodyState.acceleration = Math::vec3(entityRigidbody.force.data()) / entityRigidbody.mass;
 			if (entityRigidbody.isAffectedByConstants) {
 				entityRigidbodyState.acceleration += m_gravity;
 			}
@@ -136,7 +136,7 @@ void NtshEngn::PhysicsModule::collisionsDetection() {
 
 		if (colliderShape) {
 			const Transform& entityTransform = ecs->getComponent<Transform>(entity);
-			transform(colliderShape, nml::vec3(entityTransform.position.data()), nml::vec3(entityTransform.rotation.data()), nml::vec3(entityTransform.scale.data()));
+			transform(colliderShape, Math::vec3(entityTransform.position.data()), Math::vec3(entityTransform.rotation.data()), Math::vec3(entityTransform.scale.data()));
 
 			std::set<Entity>::iterator otherIt = entities.begin();
 			std::advance(otherIt, std::distance(entities.begin(), it));
@@ -170,14 +170,14 @@ void NtshEngn::PhysicsModule::collisionsDetection() {
 
 					if (otherColliderShape) {
 						const Transform& otherEntityTransform = ecs->getComponent<Transform>(otherEntity);
-						transform(otherColliderShape, nml::vec3(otherEntityTransform.position.data()), nml::vec3(otherEntityTransform.rotation.data()), nml::vec3(otherEntityTransform.scale.data()));
+						transform(otherColliderShape, Math::vec3(otherEntityTransform.position.data()), Math::vec3(otherEntityTransform.rotation.data()), Math::vec3(otherEntityTransform.scale.data()));
 
 						IntersectionInformation intersectionInformation = intersect(colliderShape, otherColliderShape);
 						if (intersectionInformation.hasIntersected) {
 							Collision collision;
 							collision.entity1 = entity;
 							collision.entity2 = otherEntity;
-							collision.intersectionNormal = nml::vec3(intersectionInformation.intersectionNormal.data());
+							collision.intersectionNormal = Math::vec3(intersectionInformation.intersectionNormal.data());
 							collision.intersectionDepth = intersectionInformation.intersectionDepth;
 
 							std::unique_lock<std::mutex> lock(mutex);
@@ -212,8 +212,8 @@ void NtshEngn::PhysicsModule::collisionsResponse() {
 		}
 
 		// Impulse
-		nml::vec3 relativeVelocity = entity2RigidbodyState.velocity - entity1RigidbodyState.velocity;
-		float rVdotN = nml::dot(relativeVelocity, collision.intersectionNormal);
+		Math::vec3 relativeVelocity = entity2RigidbodyState.velocity - entity1RigidbodyState.velocity;
+		float rVdotN = Math::dot(relativeVelocity, collision.intersectionNormal);
 
 		if (rVdotN >= 0.0f) {
 			continue;
@@ -223,7 +223,7 @@ void NtshEngn::PhysicsModule::collisionsResponse() {
 		const float invMass1 = 1.0f / entity1Rigidbody.mass;
 		const float invMass2 = 1.0f / entity2Rigidbody.mass;
 		const float j = (-(1.0f + e) * rVdotN) / (invMass1 + invMass2);
-		const nml::vec3 impulse = j * collision.intersectionNormal;
+		const Math::vec3 impulse = j * collision.intersectionNormal;
 
 		if (!entity1Rigidbody.isStatic) {
 			entity1RigidbodyState.velocity -= impulse * invMass1;
@@ -235,24 +235,24 @@ void NtshEngn::PhysicsModule::collisionsResponse() {
 
 		// Friction
 		relativeVelocity = entity2RigidbodyState.velocity - entity1RigidbodyState.velocity;
-		rVdotN = nml::dot(relativeVelocity, collision.intersectionNormal);
+		rVdotN = Math::dot(relativeVelocity, collision.intersectionNormal);
 
-		nml::vec3 tangent = relativeVelocity - (rVdotN * collision.intersectionNormal);
+		Math::vec3 tangent = relativeVelocity - (rVdotN * collision.intersectionNormal);
 		if (tangent.length() > 0.0001f) {
-			tangent = nml::normalize(tangent);
+			tangent = Math::normalize(tangent);
 		}
 
-		const float fVelocity = nml::dot(relativeVelocity, tangent);
+		const float fVelocity = Math::dot(relativeVelocity, tangent);
 
-		float mu = nml::vec2(entity1Rigidbody.staticFriction, entity2Rigidbody.staticFriction).length();
+		float mu = Math::vec2(entity1Rigidbody.staticFriction, entity2Rigidbody.staticFriction).length();
 		const float f = -fVelocity / (invMass1 + invMass2);
 
-		nml::vec3 friction;
+		Math::vec3 friction;
 		if (std::abs(f) < (j * mu)) {
 			friction = f * tangent;
 		}
 		else {
-			mu = nml::vec2(entity1Rigidbody.dynamicFriction, entity2Rigidbody.dynamicFriction).length();
+			mu = Math::vec2(entity1Rigidbody.dynamicFriction, entity2Rigidbody.dynamicFriction).length();
 			friction = -j * tangent * mu;
 		}
 
@@ -265,7 +265,7 @@ void NtshEngn::PhysicsModule::collisionsResponse() {
 		}
 
 		// Position correction
-		const nml::vec3 correction = std::max(collision.intersectionDepth, 0.0f) * collision.intersectionNormal;
+		const Math::vec3 correction = std::max(collision.intersectionDepth, 0.0f) * collision.intersectionNormal;
 
 		if (!entity1Rigidbody.isStatic) {
 			entity1Transform.position[0] -= correction.x;
@@ -285,9 +285,9 @@ void NtshEngn::PhysicsModule::collisionsResponse() {
 NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderSphere* sphere1, const ColliderSphere* sphere2) {
 	IntersectionInformation intersectionInformation;
 
-	const nml::vec3 sphere1Center = nml::vec3(sphere1->center.data());
-	const nml::vec3 sphere2Center = nml::vec3(sphere2->center.data());
-	const nml::vec3 centerDiff = sphere2Center - sphere1Center;
+	const Math::vec3 sphere1Center = Math::vec3(sphere1->center.data());
+	const Math::vec3 sphere2Center = Math::vec3(sphere2->center.data());
+	const Math::vec3 centerDiff = sphere2Center - sphere1Center;
 	const float centerDiffLength = centerDiff.length();
 
 	if ((centerDiffLength < 0.000001f) || (centerDiffLength >= (sphere1->radius + sphere2->radius))) {
@@ -296,7 +296,7 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 		return intersectionInformation;
 	}
 
-	const nml::vec3 intersectionNormal = nml::normalize(centerDiff);
+	const Math::vec3 intersectionNormal = Math::normalize(centerDiff);
 
 	intersectionInformation.hasIntersected = true;
 	intersectionInformation.intersectionNormal = { intersectionNormal.x, intersectionNormal.y, intersectionNormal.z };
@@ -322,7 +322,7 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 		return intersectionInformation;
 	}
 
-	const nml::vec3 intersectionNormal = nml::normalize(nml::vec3(x, y, z) - nml::vec3(sphere->center.data()));
+	const Math::vec3 intersectionNormal = Math::normalize(Math::vec3(x, y, z) - Math::vec3(sphere->center.data()));
 
 	intersectionInformation.hasIntersected = true;
 	intersectionInformation.intersectionNormal = { intersectionNormal.x, intersectionNormal.y, intersectionNormal.z };
@@ -334,11 +334,11 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderSphere* sphere, const ColliderCapsule* capsule) {
 	IntersectionInformation intersectionInformation;
 
-	const nml::vec3 sphereCenter = nml::vec3(sphere->center.data());
-	const nml::vec3 capsuleBase = nml::vec3(capsule->base.data());
-	const nml::vec3 capsuleTip = nml::vec3(capsule->tip.data());
+	const Math::vec3 sphereCenter = Math::vec3(sphere->center.data());
+	const Math::vec3 capsuleBase = Math::vec3(capsule->base.data());
+	const Math::vec3 capsuleTip = Math::vec3(capsule->tip.data());
 
-	const nml::vec3 closestPointOnCapsule = closestPointOnSegment(sphereCenter, capsuleBase, capsuleTip);
+	const Math::vec3 closestPointOnCapsule = closestPointOnSegment(sphereCenter, capsuleBase, capsuleTip);
 
 	ColliderSphere sphereFromCapsule;
 	sphereFromCapsule.center = { closestPointOnCapsule.x, closestPointOnCapsule.y, closestPointOnCapsule.z };
@@ -392,11 +392,11 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderAABB* aabb, const ColliderCapsule* capsule) {
 	IntersectionInformation intersectionInformation;
 
-	const nml::vec3 aabbCenter = getCenter(aabb);
-	const nml::vec3 capsuleBase = nml::vec3(capsule->base.data());
-	const nml::vec3 capsuleTip = nml::vec3(capsule->tip.data());
+	const Math::vec3 aabbCenter = getCenter(aabb);
+	const Math::vec3 capsuleBase = Math::vec3(capsule->base.data());
+	const Math::vec3 capsuleTip = Math::vec3(capsule->tip.data());
 
-	const nml::vec3 closestPointOnCapsule = closestPointOnSegment(aabbCenter, capsuleBase, capsuleTip);
+	const Math::vec3 closestPointOnCapsule = closestPointOnSegment(aabbCenter, capsuleBase, capsuleTip);
 
 	ColliderSphere sphereFromCapsule;
 	sphereFromCapsule.center = { closestPointOnCapsule.x, closestPointOnCapsule.y, closestPointOnCapsule.z };
@@ -408,12 +408,12 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderCapsule* capsule1, const ColliderCapsule* capsule2) {
 	IntersectionInformation intersectionInformation;
 
-	const nml::vec3 capsule1Base = nml::vec3(capsule1->base.data());
-	const nml::vec3 capsule1Tip = nml::vec3(capsule1->tip.data());
-	const nml::vec3 capsule2Base = nml::vec3(capsule2->base.data());
-	const nml::vec3 capsule2Tip = nml::vec3(capsule2->tip.data());
+	const Math::vec3 capsule1Base = Math::vec3(capsule1->base.data());
+	const Math::vec3 capsule1Tip = Math::vec3(capsule1->tip.data());
+	const Math::vec3 capsule2Base = Math::vec3(capsule2->base.data());
+	const Math::vec3 capsule2Tip = Math::vec3(capsule2->tip.data());
 
-	const std::pair<nml::vec3, nml::vec3> bestOnCapsules = closestPointSegmentSegment(capsule1Base, capsule1Tip, capsule2Base, capsule2Tip);
+	const std::pair<Math::vec3, Math::vec3> bestOnCapsules = closestPointSegmentSegment(capsule1Base, capsule1Tip, capsule2Base, capsule2Tip);
 
 	ColliderSphere sphereFromCapsule1;
 	sphereFromCapsule1.center = { bestOnCapsules.first.x, bestOnCapsules.first.y, bestOnCapsules.first.z };
@@ -458,9 +458,9 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::gjk(const ColliderSha
 
 	GJKSimplex simplex;
 
-	nml::vec3 direction = getCenter(shape2) - getCenter(shape1);
+	Math::vec3 direction = getCenter(shape2) - getCenter(shape1);
 
-	nml::vec3 supp = support(shape1, shape2, direction);
+	Math::vec3 supp = support(shape1, shape2, direction);
 	simplex.push_front(supp);
 
 	direction = supp * -1.0f;
@@ -468,7 +468,7 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::gjk(const ColliderSha
 	while (true) {
 		supp = support(shape1, shape2, direction);
 
-		if (nml::dot(supp, direction) <= 0.0f) { // No intersection
+		if (Math::dot(supp, direction) <= 0.0f) { // No intersection
 			intersectionInformation.hasIntersected = false;
 
 			return intersectionInformation;
@@ -479,7 +479,7 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::gjk(const ColliderSha
 		if (simplexContainsOrigin(simplex, direction)) { // Intersection
 			intersectionInformation.hasIntersected = true;
 
-			const std::pair<nml::vec3, float> intersectionNormalAndDepth = epa(shape1, shape2, simplex);
+			const std::pair<Math::vec3, float> intersectionNormalAndDepth = epa(shape1, shape2, simplex);
 			intersectionInformation.intersectionNormal = { intersectionNormalAndDepth.first[0], intersectionNormalAndDepth.first[1], intersectionNormalAndDepth.first[2] };
 			intersectionInformation.intersectionDepth = intersectionNormalAndDepth.second + 0.001f;
 
@@ -490,7 +490,7 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::gjk(const ColliderSha
 	NTSHENGN_MODULE_ERROR("Reached impossible path.", Result::ModuleError);
 }
 
-bool NtshEngn::PhysicsModule::simplexContainsOrigin(GJKSimplex& simplex, nml::vec3& direction) {
+bool NtshEngn::PhysicsModule::simplexContainsOrigin(GJKSimplex& simplex, Math::vec3& direction) {
 	if (simplex.size() == 2) {
 		return gjkLine(simplex, direction);
 	}
@@ -502,15 +502,15 @@ bool NtshEngn::PhysicsModule::simplexContainsOrigin(GJKSimplex& simplex, nml::ve
 	}
 }
 
-bool NtshEngn::PhysicsModule::gjkLine(GJKSimplex& simplex, nml::vec3& direction) {
-	const nml::vec3 a = simplex[0];
-	const nml::vec3 b = simplex[1];
+bool NtshEngn::PhysicsModule::gjkLine(GJKSimplex& simplex, Math::vec3& direction) {
+	const Math::vec3 a = simplex[0];
+	const Math::vec3 b = simplex[1];
 
-	const nml::vec3 ab = b - a;
-	const nml::vec3 ao = a * -1.0f;
+	const Math::vec3 ab = b - a;
+	const Math::vec3 ao = a * -1.0f;
 
 	if (sameDirection(ab, ao)) {
-		direction = nml::cross(nml::cross(ab, ao), ab);
+		direction = Math::cross(Math::cross(ab, ao), ab);
 	}
 	else {
 		simplex = { a };
@@ -520,21 +520,21 @@ bool NtshEngn::PhysicsModule::gjkLine(GJKSimplex& simplex, nml::vec3& direction)
 	return false;
 }
 
-bool NtshEngn::PhysicsModule::gjkTriangle(GJKSimplex& simplex, nml::vec3& direction) {
-	const nml::vec3 a = simplex[0];
-	const nml::vec3 b = simplex[1];
-	const nml::vec3 c = simplex[2];
+bool NtshEngn::PhysicsModule::gjkTriangle(GJKSimplex& simplex, Math::vec3& direction) {
+	const Math::vec3 a = simplex[0];
+	const Math::vec3 b = simplex[1];
+	const Math::vec3 c = simplex[2];
 
-	const nml::vec3 ab = b - a;
-	const nml::vec3 ac = c - a;
-	const nml::vec3 ao = a * -1.0f;
+	const Math::vec3 ab = b - a;
+	const Math::vec3 ac = c - a;
+	const Math::vec3 ao = a * -1.0f;
 
-	const nml::vec3 abc = nml::cross(ab, ac);
+	const Math::vec3 abc = Math::cross(ab, ac);
 
-	if (sameDirection(nml::cross(abc, ac), ao)) {
+	if (sameDirection(Math::cross(abc, ac), ao)) {
 		if (sameDirection(ac, ao)) {
 			simplex = { a, c };
-			direction = nml::cross(nml::cross(ac, ao), ac);
+			direction = Math::cross(Math::cross(ac, ao), ac);
 		}
 		else {
 			simplex = { a, b };
@@ -542,7 +542,7 @@ bool NtshEngn::PhysicsModule::gjkTriangle(GJKSimplex& simplex, nml::vec3& direct
 		}
 	}
 	else {
-		if (sameDirection(nml::cross(ab, abc), ao)) {
+		if (sameDirection(Math::cross(ab, abc), ao)) {
 			simplex = { a, b };
 			return gjkLine(simplex, direction);
 		}
@@ -560,20 +560,20 @@ bool NtshEngn::PhysicsModule::gjkTriangle(GJKSimplex& simplex, nml::vec3& direct
 	return false;
 }
 
-bool NtshEngn::PhysicsModule::gjkTetrahedron(GJKSimplex& simplex, nml::vec3& direction) {
-	const nml::vec3 a = simplex[0];
-	const nml::vec3 b = simplex[1];
-	const nml::vec3 c = simplex[2];
-	const nml::vec3 d = simplex[3];
+bool NtshEngn::PhysicsModule::gjkTetrahedron(GJKSimplex& simplex, Math::vec3& direction) {
+	const Math::vec3 a = simplex[0];
+	const Math::vec3 b = simplex[1];
+	const Math::vec3 c = simplex[2];
+	const Math::vec3 d = simplex[3];
 
-	const nml::vec3 ab = b - a;
-	const nml::vec3 ac = c - a;
-	const nml::vec3 ad = d - a;
-	const nml::vec3 ao = a * -1.0f;
+	const Math::vec3 ab = b - a;
+	const Math::vec3 ac = c - a;
+	const Math::vec3 ad = d - a;
+	const Math::vec3 ao = a * -1.0f;
 
-	const nml::vec3 abc = nml::cross(ab, ac);
-	const nml::vec3 acd = nml::cross(ac, ad);
-	const nml::vec3 adb = nml::cross(ad, ab);
+	const Math::vec3 abc = Math::cross(ab, ac);
+	const Math::vec3 acd = Math::cross(ac, ad);
+	const Math::vec3 adb = Math::cross(ad, ab);
 
 	if (sameDirection(abc, ao)) {
 		simplex = { a, b, c };
@@ -593,11 +593,11 @@ bool NtshEngn::PhysicsModule::gjkTetrahedron(GJKSimplex& simplex, nml::vec3& dir
 	return true;
 }
 
-bool NtshEngn::PhysicsModule::sameDirection(const nml::vec3& a, const nml::vec3& b) {
-	return nml::dot(a, b) > 0.0f;
+bool NtshEngn::PhysicsModule::sameDirection(const Math::vec3& a, const Math::vec3& b) {
+	return Math::dot(a, b) > 0.0f;
 }
 
-nml::vec3 NtshEngn::PhysicsModule::getCenter(const ColliderShape* shape) {
+NtshEngn::Math::vec3 NtshEngn::PhysicsModule::getCenter(const ColliderShape* shape) {
 	if (shape->getType() == ColliderShapeType::Sphere) {
 		return getCenter(static_cast<const ColliderSphere*>(shape));
 	}
@@ -608,29 +608,29 @@ nml::vec3 NtshEngn::PhysicsModule::getCenter(const ColliderShape* shape) {
 		return getCenter(static_cast<const ColliderCapsule*>(shape));
 	}
 
-	return nml::vec3(0.0f, 0.0f, 0.0f);
+	return Math::vec3(0.0f, 0.0f, 0.0f);
 }
 
-nml::vec3 NtshEngn::PhysicsModule::getCenter(const ColliderSphere* sphere) {
-	return nml::vec3(sphere->center.data());
+NtshEngn::Math::vec3 NtshEngn::PhysicsModule::getCenter(const ColliderSphere* sphere) {
+	return Math::vec3(sphere->center.data());
 }
 
-nml::vec3 NtshEngn::PhysicsModule::getCenter(const ColliderAABB* aabb) {
-	return nml::vec3((aabb->min[0] + aabb->max[0]) / 2.0f, (aabb->min[1] + aabb->max[1]) / 2.0f, (aabb->min[2] + aabb->max[2]) / 2.0f);
+NtshEngn::Math::vec3 NtshEngn::PhysicsModule::getCenter(const ColliderAABB* aabb) {
+	return Math::vec3((aabb->min[0] + aabb->max[0]) / 2.0f, (aabb->min[1] + aabb->max[1]) / 2.0f, (aabb->min[2] + aabb->max[2]) / 2.0f);
 }
 
-nml::vec3 NtshEngn::PhysicsModule::getCenter(const ColliderCapsule* capsule) {
-	return nml::vec3((capsule->base[0] + capsule->tip[0]) / 2.0f, (capsule->base[1] + capsule->tip[1]) / 2.0f, (capsule->base[2] + capsule->tip[2]) / 2.0f);
+NtshEngn::Math::vec3 NtshEngn::PhysicsModule::getCenter(const ColliderCapsule* capsule) {
+	return Math::vec3((capsule->base[0] + capsule->tip[0]) / 2.0f, (capsule->base[1] + capsule->tip[1]) / 2.0f, (capsule->base[2] + capsule->tip[2]) / 2.0f);
 }
 
-nml::vec3 NtshEngn::PhysicsModule::support(const ColliderShape* shape1, const ColliderShape* shape2, const nml::vec3& direction) {
-	const nml::vec3 p1 = getFarthestPointInDirection(shape1, direction);
-	const nml::vec3 p2 = getFarthestPointInDirection(shape2, direction * -1.0f);
+NtshEngn::Math::vec3 NtshEngn::PhysicsModule::support(const ColliderShape* shape1, const ColliderShape* shape2, const Math::vec3& direction) {
+	const Math::vec3 p1 = getFarthestPointInDirection(shape1, direction);
+	const Math::vec3 p2 = getFarthestPointInDirection(shape2, direction * -1.0f);
 
 	return p1 - p2;
 }
 
-nml::vec3 NtshEngn::PhysicsModule::getFarthestPointInDirection(const ColliderShape* shape, const nml::vec3& direction) {
+NtshEngn::Math::vec3 NtshEngn::PhysicsModule::getFarthestPointInDirection(const ColliderShape* shape, const Math::vec3& direction) {
 	if (shape->getType() == ColliderShapeType::Sphere) {
 		return getFarthestPointInDirection(static_cast<const ColliderSphere*>(shape), direction);
 	}
@@ -641,56 +641,56 @@ nml::vec3 NtshEngn::PhysicsModule::getFarthestPointInDirection(const ColliderSha
 		return getFarthestPointInDirection(static_cast<const ColliderCapsule*>(shape), direction);
 	}
 
-	return nml::vec3(0.0f, 0.0f, 0.0f);
+	return Math::vec3(0.0f, 0.0f, 0.0f);
 }
 
-nml::vec3 NtshEngn::PhysicsModule::getFarthestPointInDirection(const ColliderSphere* sphere, const nml::vec3& direction) {
+NtshEngn::Math::vec3 NtshEngn::PhysicsModule::getFarthestPointInDirection(const ColliderSphere* sphere, const Math::vec3& direction) {
 	const float directionLength = direction.length();
 
-	return nml::vec3(sphere->center.data()) + direction * (sphere->radius / directionLength);
+	return Math::vec3(sphere->center.data()) + direction * (sphere->radius / directionLength);
 }
 
-nml::vec3 NtshEngn::PhysicsModule::getFarthestPointInDirection(const ColliderAABB* aabb, const nml::vec3& direction) {
-	return nml::vec3(direction.x >= 0.0f ? aabb->max[0] : aabb->min[0],
+NtshEngn::Math::vec3 NtshEngn::PhysicsModule::getFarthestPointInDirection(const ColliderAABB* aabb, const Math::vec3& direction) {
+	return Math::vec3(direction.x >= 0.0f ? aabb->max[0] : aabb->min[0],
 		direction.y >= 0.0f ? aabb->max[1] : aabb->min[1],
 		direction.z >= 0.0f ? aabb->max[2] : aabb->min[2]);
 }
 
-nml::vec3 NtshEngn::PhysicsModule::getFarthestPointInDirection(const ColliderCapsule* capsule, const nml::vec3& direction) {
+NtshEngn::Math::vec3 NtshEngn::PhysicsModule::getFarthestPointInDirection(const ColliderCapsule* capsule, const Math::vec3& direction) {
 	const float directionLength = direction.length();
-	const nml::vec3 capsuleBase = nml::vec3(capsule->base.data());
-	const nml::vec3 capsuleTip = nml::vec3(capsule->tip.data());
+	const Math::vec3 capsuleBase = Math::vec3(capsule->base.data());
+	const Math::vec3 capsuleTip = Math::vec3(capsule->tip.data());
 
-	return ((nml::dot(direction, nml::vec3(capsuleTip - capsuleBase)) >= 0.0) ? capsuleTip : capsuleBase) + direction * (capsule->radius / directionLength);
+	return ((Math::dot(direction, Math::vec3(capsuleTip - capsuleBase)) >= 0.0) ? capsuleTip : capsuleBase) + direction * (capsule->radius / directionLength);
 }
 
-std::pair<nml::vec3, float> NtshEngn::PhysicsModule::epa(const ColliderShape* shape1, const ColliderShape* shape2, GJKSimplex& simplex) {
-	std::vector<nml::vec3> polytope(simplex.begin(), simplex.end());
+std::pair<NtshEngn::Math::vec3, float> NtshEngn::PhysicsModule::epa(const ColliderShape* shape1, const ColliderShape* shape2, GJKSimplex& simplex) {
+	std::vector<Math::vec3> polytope(simplex.begin(), simplex.end());
 	std::vector<size_t> faces = {
 		0, 1, 2,
 		0, 3, 1,
 		0, 2, 3,
 		1, 3, 2
 	};
-	std::pair<std::vector<nml::vec4>, size_t> polytopeNormals = getPolytopeNormals(polytope, faces);
-	std::vector<nml::vec4> normals = polytopeNormals.first;
+	std::pair<std::vector<Math::vec4>, size_t> polytopeNormals = getPolytopeNormals(polytope, faces);
+	std::vector<Math::vec4> normals = polytopeNormals.first;
 	size_t minTriangle = polytopeNormals.second;
 
-	nml::vec3 minNormal;
+	Math::vec3 minNormal;
 	float minDistance = std::numeric_limits<float>::max();
 	while (minDistance == std::numeric_limits<float>::max()) {
-		minNormal = nml::vec3(normals[minTriangle]);
+		minNormal = Math::vec3(normals[minTriangle]);
 		minDistance = normals[minTriangle].w;
 
-		const nml::vec3 supp = support(shape1, shape2, minNormal);
-		const float sDistance = nml::dot(minNormal, supp);
+		const Math::vec3 supp = support(shape1, shape2, minNormal);
+		const float sDistance = Math::dot(minNormal, supp);
 		if (std::abs(sDistance - minDistance) > 0.001f) {
 			minDistance = std::numeric_limits<float>::max();
 
 			std::vector<std::pair<size_t, size_t>> uniqueEdges;
 			for (size_t i = 0; i < normals.size(); i++) {
 				size_t f = i * 3;
-				if (sameDirection(nml::vec3(normals[i]), supp - polytope[faces[f]])) {
+				if (sameDirection(Math::vec3(normals[i]), supp - polytope[faces[f]])) {
 					addIfUniqueEdge(uniqueEdges, faces, f, f + 1);
 					addIfUniqueEdge(uniqueEdges, faces, f + 1, f + 2);
 					addIfUniqueEdge(uniqueEdges, faces, f + 2, f);
@@ -718,8 +718,8 @@ std::pair<nml::vec3, float> NtshEngn::PhysicsModule::epa(const ColliderShape* sh
 
 			polytope.push_back(supp);
 
-			std::pair<std::vector<nml::vec4>, size_t> newFacesNormals = getPolytopeNormals(polytope, newFaces);
-			const std::vector<nml::vec4> newNormals = newFacesNormals.first;
+			std::pair<std::vector<Math::vec4>, size_t> newFacesNormals = getPolytopeNormals(polytope, newFaces);
+			const std::vector<Math::vec4> newNormals = newFacesNormals.first;
 			const size_t newMinTriangle = newFacesNormals.second;
 
 			float oldMinDistance = std::numeric_limits<float>::max();
@@ -742,27 +742,27 @@ std::pair<nml::vec3, float> NtshEngn::PhysicsModule::epa(const ColliderShape* sh
 	return { minNormal, minDistance };
 }
 
-std::pair<std::vector<nml::vec4>, size_t> NtshEngn::PhysicsModule::getPolytopeNormals(const std::vector<nml::vec3>& polytope, const std::vector<size_t>& faces) {
-	std::vector<nml::vec4> normals;
+std::pair<std::vector<NtshEngn::Math::vec4>, size_t> NtshEngn::PhysicsModule::getPolytopeNormals(const std::vector<Math::vec3>& polytope, const std::vector<size_t>& faces) {
+	std::vector<Math::vec4> normals;
 	size_t minTriangle = 0;
 	float minDistance = std::numeric_limits<float>::max();
 
 	for (size_t i = 0; i < faces.size(); i += 3) {
-		const nml::vec3 a = polytope[faces[i]];
-		const nml::vec3 b = polytope[faces[i + 1]];
-		const nml::vec3 c = polytope[faces[i + 2]];
+		const Math::vec3 a = polytope[faces[i]];
+		const Math::vec3 b = polytope[faces[i + 1]];
+		const Math::vec3 c = polytope[faces[i + 2]];
 
-		const nml::vec3 ab = b - a;
-		const nml::vec3 ac = c - a;
+		const Math::vec3 ab = b - a;
+		const Math::vec3 ac = c - a;
 
-		nml::vec3 n = nml::normalize(nml::cross(ab, ac));
-		float distance = nml::dot(n, a);
+		Math::vec3 n = Math::normalize(Math::cross(ab, ac));
+		float distance = Math::dot(n, a);
 		if (distance < 0.0f) {
 			n *= -1;
 			distance *= -1;
 		}
 
-		normals.push_back(nml::vec4(n, distance));
+		normals.push_back(Math::vec4(n, distance));
 
 		if (distance < minDistance) {
 			minDistance = distance;
@@ -783,7 +783,7 @@ void NtshEngn::PhysicsModule::addIfUniqueEdge(std::vector<std::pair<size_t, size
 	}
 }
 
-void NtshEngn::PhysicsModule::transform(ColliderShape* shape, const nml::vec3& translation, const nml::vec3& rotation, const nml::vec3& scale) {
+void NtshEngn::PhysicsModule::transform(ColliderShape* shape, const Math::vec3& translation, const Math::vec3& rotation, const Math::vec3& scale) {
 	if (shape->getType() == ColliderShapeType::Sphere) {
 		transform(static_cast<ColliderSphere*>(shape), translation, scale);
 	}
@@ -795,12 +795,12 @@ void NtshEngn::PhysicsModule::transform(ColliderShape* shape, const nml::vec3& t
 	}
 }
 
-void NtshEngn::PhysicsModule::transform(ColliderSphere* sphere, const nml::vec3& translation, const nml::vec3& scale) {
+void NtshEngn::PhysicsModule::transform(ColliderSphere* sphere, const Math::vec3& translation, const Math::vec3& scale) {
 	sphere->center = { translation.x, translation.y, translation.z };
 	sphere->radius *= std::max(std::abs(scale.x), std::max(std::abs(scale.y), std::abs(scale.z)));
 }
 
-void NtshEngn::PhysicsModule::transform(ColliderAABB* aabb, const nml::vec3& translation, const nml::vec3& rotation, const nml::vec3& scale) {
+void NtshEngn::PhysicsModule::transform(ColliderAABB* aabb, const Math::vec3& translation, const Math::vec3& rotation, const Math::vec3& scale) {
 	ColliderAABB newAABB;
 	newAABB.min = { translation.x, translation.y, translation.z };
 	newAABB.max = { translation.x, translation.y, translation.z };
@@ -808,9 +808,9 @@ void NtshEngn::PhysicsModule::transform(ColliderAABB* aabb, const nml::vec3& tra
 	float a;
 	float b;
 
-	const nml::mat4 rotationMatrix = nml::rotate(rotation[0], nml::vec3(1.0f, 0.0f, 0.0f)) *
-		nml::rotate(rotation[1], nml::vec3(0.0f, 1.0f, 0.0f)) *
-		nml::rotate(rotation[2], nml::vec3(0.0f, 0.0f, 1.0f));
+	const Math::mat4 rotationMatrix = Math::rotate(rotation[0], Math::vec3(1.0f, 0.0f, 0.0f)) *
+		Math::rotate(rotation[1], Math::vec3(0.0f, 1.0f, 0.0f)) *
+		Math::rotate(rotation[2], Math::vec3(0.0f, 0.0f, 1.0f));
 
 	for (uint8_t i = 0; i < 3; i++) {
 		for (uint8_t j = 0; j < 3; j++) {
@@ -826,34 +826,34 @@ void NtshEngn::PhysicsModule::transform(ColliderAABB* aabb, const nml::vec3& tra
 	aabb->max = newAABB.max;
 }
 
-void NtshEngn::PhysicsModule::transform(ColliderCapsule* capsule, const nml::vec3& translation, const nml::vec3& rotation, const nml::vec3& scale) {
+void NtshEngn::PhysicsModule::transform(ColliderCapsule* capsule, const Math::vec3& translation, const Math::vec3& rotation, const Math::vec3& scale) {
 	capsule->base = { capsule->base[0] + translation.x, capsule->base[1] + translation.y, capsule->base[2] + translation.z };
 	capsule->tip = { capsule->tip[0] + translation.x, capsule->tip[1] + translation.y, capsule->tip[2] + translation.z };
 
-	const nml::mat4 rotationMatrix = nml::rotate(rotation[0], nml::vec3(1.0f, 0.0f, 0.0f)) *
-		nml::rotate(rotation[1], nml::vec3(0.0f, 1.0f, 0.0f)) *
-		nml::rotate(rotation[2], nml::vec3(0.0f, 0.0f, 1.0f));
-	const nml::vec3 tipMinusBase = nml::vec3(capsule->tip.data()) - nml::vec3(capsule->base.data());
+	const Math::mat4 rotationMatrix = Math::rotate(rotation[0], Math::vec3(1.0f, 0.0f, 0.0f)) *
+		Math::rotate(rotation[1], Math::vec3(0.0f, 1.0f, 0.0f)) *
+		Math::rotate(rotation[2], Math::vec3(0.0f, 0.0f, 1.0f));
+	const Math::vec3 tipMinusBase = Math::vec3(capsule->tip.data()) - Math::vec3(capsule->base.data());
 
-	const nml::vec3 tipRotation = nml::vec3(rotationMatrix * nml::vec4(tipMinusBase, 1.0f));
+	const Math::vec3 tipRotation = Math::vec3(rotationMatrix * Math::vec4(tipMinusBase, 1.0f));
 
 	capsule->tip = { tipRotation.x + capsule->base[0], tipRotation.y + capsule->base[1], tipRotation.z + capsule->base[2]};
 	capsule->radius *= std::max(std::abs(scale.x), std::max(std::abs(scale.y), std::abs(scale.z)));
 }
 
-nml::vec3 NtshEngn::PhysicsModule::closestPointOnSegment(const nml::vec3& point, const nml::vec3& segmentA, const nml::vec3& segmentB) {
-	const nml::vec3 ab = segmentB - segmentA;
-	const nml::vec3 ap = point - segmentA;
+NtshEngn::Math::vec3 NtshEngn::PhysicsModule::closestPointOnSegment(const Math::vec3& point, const Math::vec3& segmentA, const Math::vec3& segmentB) {
+	const Math::vec3 ab = segmentB - segmentA;
+	const Math::vec3 ap = point - segmentA;
 
 	const float e = dot(ap, ab) / dot(ab, ab);
 
 	return segmentA + (std::min(std::max(e, 0.0f), 1.0f) * ab);
 }
 
-std::pair<nml::vec3, nml::vec3> NtshEngn::PhysicsModule::closestPointSegmentSegment(const nml::vec3& segmentA1, const nml::vec3& segmentA2, const nml::vec3& segmentB1, const nml::vec3& segmentB2) {
-	const nml::vec3 segmentA = segmentA2 - segmentA1;
-	const nml::vec3 segmentB = segmentB2 - segmentB1;
-	const nml::vec3 r = segmentA1 - segmentB1;
+std::pair<NtshEngn::Math::vec3, NtshEngn::Math::vec3> NtshEngn::PhysicsModule::closestPointSegmentSegment(const Math::vec3& segmentA1, const Math::vec3& segmentA2, const Math::vec3& segmentB1, const Math::vec3& segmentB2) {
+	const Math::vec3 segmentA = segmentA2 - segmentA1;
+	const Math::vec3 segmentB = segmentB2 - segmentB1;
+	const Math::vec3 r = segmentA1 - segmentB1;
 	const float segmentASqLength = dot(segmentA, segmentA);
 	const float segmentBSqLength = dot(segmentB, segmentB);
 	const float f = dot(segmentB, r);
@@ -862,7 +862,7 @@ std::pair<nml::vec3, nml::vec3> NtshEngn::PhysicsModule::closestPointSegmentSegm
 	float t = 0.0f;
 
 	if ((segmentASqLength <= 0.000001f) && (segmentBSqLength <= 0.000001f)) {
-		return std::pair<nml::vec3, nml::vec3>(segmentA1, segmentB1);
+		return std::pair<Math::vec3, Math::vec3>(segmentA1, segmentB1);
 	}
 
 	if (segmentASqLength <= 0.000001f) {
@@ -871,7 +871,7 @@ std::pair<nml::vec3, nml::vec3> NtshEngn::PhysicsModule::closestPointSegmentSegm
 		t = std::max(std::min(t, 1.0f), 0.0f);
 	}
 	else {
-		const float c = nml::dot(segmentA, r);
+		const float c = Math::dot(segmentA, r);
 
 		if (segmentBSqLength <= 0.000001f) {
 			t = 0.0f;
@@ -879,7 +879,7 @@ std::pair<nml::vec3, nml::vec3> NtshEngn::PhysicsModule::closestPointSegmentSegm
 			s = std::max(std::min(s, 1.0f), 0.0f);
 		}
 		else {
-			const float b = nml::dot(segmentA, segmentB);
+			const float b = Math::dot(segmentA, segmentB);
 
 			const float denom = (segmentASqLength * segmentBSqLength) - (b * b);
 			if (denom != 0.0f) {
@@ -904,7 +904,7 @@ std::pair<nml::vec3, nml::vec3> NtshEngn::PhysicsModule::closestPointSegmentSegm
 		}
 	}
 
-	return std::pair<nml::vec3, nml::vec3>(segmentA1 + (segmentA * s), segmentB1 + (segmentB * t));
+	return std::pair<Math::vec3, Math::vec3>(segmentA1 + (segmentA * s), segmentB1 + (segmentB * t));
 }
 
 extern "C" NTSHENGN_MODULE_API NtshEngn::PhysicsModuleInterface* createModule() {
