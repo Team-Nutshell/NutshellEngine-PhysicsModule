@@ -83,7 +83,6 @@ void NtshEngn::PhysicsModule::eulerIntegrator(float dtSeconds) {
 		Rigidbody& entityRigidbody = ecs->getComponent<Rigidbody>(entity);
 		RigidbodyState& entityRigidbodyState = m_rigidbodyStates[entity];
 		if (!entityRigidbody.isStatic) {
-
 			Transform& entityTransform = ecs->getComponent<Transform>(entity);
 
 			entityRigidbodyState.acceleration = Math::vec3(entityRigidbody.force.data()) / entityRigidbody.mass;
