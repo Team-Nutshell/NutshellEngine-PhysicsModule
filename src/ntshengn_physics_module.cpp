@@ -135,7 +135,7 @@ void NtshEngn::PhysicsModule::collisionsDetection() {
 
 		if (colliderShape) {
 			const Transform& entityTransform = ecs->getComponent<Transform>(entity);
-			transform(colliderShape, Math::vec3(entityTransform.position.data()), Math::vec3(entityTransform.rotation.data()), Math::vec3(entityTransform.scale.data()));
+			transform(colliderShape, entityTransform.position, entityTransform.rotation, entityTransform.scale);
 
 			std::set<Entity>::iterator otherIt = entities.begin();
 			std::advance(otherIt, std::distance(entities.begin(), it));
@@ -169,7 +169,7 @@ void NtshEngn::PhysicsModule::collisionsDetection() {
 
 					if (otherColliderShape) {
 						const Transform& otherEntityTransform = ecs->getComponent<Transform>(otherEntity);
-						transform(otherColliderShape, Math::vec3(otherEntityTransform.position.data()), Math::vec3(otherEntityTransform.rotation.data()), Math::vec3(otherEntityTransform.scale.data()));
+						transform(otherColliderShape, otherEntityTransform.position, otherEntityTransform.rotation, otherEntityTransform.scale);
 
 						IntersectionInformation intersectionInformation = intersect(colliderShape, otherColliderShape);
 						if (intersectionInformation.hasIntersected) {
@@ -284,9 +284,7 @@ void NtshEngn::PhysicsModule::collisionsResponse() {
 NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderSphere* sphere1, const ColliderSphere* sphere2) {
 	IntersectionInformation intersectionInformation;
 
-	const Math::vec3 sphere1Center = Math::vec3(sphere1->center.data());
-	const Math::vec3 sphere2Center = Math::vec3(sphere2->center.data());
-	const Math::vec3 centerDiff = sphere2Center - sphere1Center;
+	const Math::vec3 centerDiff = sphere2->center - sphere1->center;
 	const float centerDiffLength = centerDiff.length();
 
 	if ((centerDiffLength < 0.000001f) || (centerDiffLength >= (sphere1->radius + sphere2->radius))) {
@@ -295,10 +293,8 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 		return intersectionInformation;
 	}
 
-	const Math::vec3 intersectionNormal = Math::normalize(centerDiff);
-
 	intersectionInformation.hasIntersected = true;
-	intersectionInformation.intersectionNormal = { intersectionNormal.x, intersectionNormal.y, intersectionNormal.z };
+	intersectionInformation.intersectionNormal = Math::normalize(centerDiff);
 	intersectionInformation.intersectionDepth = (sphere1->radius + sphere2->radius) - centerDiffLength;
 
 	return intersectionInformation;
@@ -321,10 +317,8 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 		return intersectionInformation;
 	}
 
-	const Math::vec3 intersectionNormal = Math::normalize(Math::vec3(x, y, z) - Math::vec3(sphere->center.data()));
-
 	intersectionInformation.hasIntersected = true;
-	intersectionInformation.intersectionNormal = { intersectionNormal.x, intersectionNormal.y, intersectionNormal.z };
+	intersectionInformation.intersectionNormal = Math::normalize(Math::vec3(x, y, z) - sphere->center);
 	intersectionInformation.intersectionDepth = sphere->radius - distance;
 
 	return intersectionInformation;
@@ -333,14 +327,8 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderSphere* sphere, const ColliderCapsule* capsule) {
 	IntersectionInformation intersectionInformation;
 
-	const Math::vec3 sphereCenter = Math::vec3(sphere->center.data());
-	const Math::vec3 capsuleBase = Math::vec3(capsule->base.data());
-	const Math::vec3 capsuleTip = Math::vec3(capsule->tip.data());
-
-	const Math::vec3 closestPointOnCapsule = closestPointOnSegment(sphereCenter, capsuleBase, capsuleTip);
-
 	ColliderSphere sphereFromCapsule;
-	sphereFromCapsule.center = { closestPointOnCapsule.x, closestPointOnCapsule.y, closestPointOnCapsule.z };
+	sphereFromCapsule.center = closestPointOnSegment(sphere->center, capsule->base, capsule->tip);
 	sphereFromCapsule.radius = capsule->radius;
 
 	return intersect(sphere, &sphereFromCapsule);
@@ -349,13 +337,13 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderAABB* aabb1, const ColliderAABB* aabb2) {
 	IntersectionInformation intersectionInformation;
 
-	const std::array<std::array<float, 3>, 6> normals = {
-		std::array<float, 3> { -1.0f, 0.0f, 0.0f },
-		{ 1.0f, 0.0f, 0.0f },
-		{ 0.0f, -1.0f, 0.0f },
-		{ 0.0f, 1.0f, 0.0f },
-		{ 0.0f, 0.0f, -1.0f },
-		{ 0.0f, 0.0f, 1.0f }
+	const std::array<Math::vec3, 6> normals = {
+		Math::vec3(-1.0f, 0.0f, 0.0f),
+		Math::vec3(1.0f, 0.0f, 0.0f),
+		Math::vec3(0.0f, -1.0f, 0.0f),
+		Math::vec3(0.0f, 1.0f, 0.0f),
+		Math::vec3(0.0f, 0.0f, -1.0f),
+		Math::vec3(0.0f, 0.0f, 1.0f)
 	};
 
 	const std::array<float, 6> distances = {
@@ -392,10 +380,8 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 	IntersectionInformation intersectionInformation;
 
 	const Math::vec3 aabbCenter = getCenter(aabb);
-	const Math::vec3 capsuleBase = Math::vec3(capsule->base.data());
-	const Math::vec3 capsuleTip = Math::vec3(capsule->tip.data());
 
-	const Math::vec3 closestPointOnCapsule = closestPointOnSegment(aabbCenter, capsuleBase, capsuleTip);
+	const Math::vec3 closestPointOnCapsule = closestPointOnSegment(aabbCenter, capsule->base, capsule->tip);
 
 	ColliderSphere sphereFromCapsule;
 	sphereFromCapsule.center = { closestPointOnCapsule.x, closestPointOnCapsule.y, closestPointOnCapsule.z };
@@ -407,19 +393,14 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderCapsule* capsule1, const ColliderCapsule* capsule2) {
 	IntersectionInformation intersectionInformation;
 
-	const Math::vec3 capsule1Base = Math::vec3(capsule1->base.data());
-	const Math::vec3 capsule1Tip = Math::vec3(capsule1->tip.data());
-	const Math::vec3 capsule2Base = Math::vec3(capsule2->base.data());
-	const Math::vec3 capsule2Tip = Math::vec3(capsule2->tip.data());
-
-	const std::pair<Math::vec3, Math::vec3> bestOnCapsules = closestPointSegmentSegment(capsule1Base, capsule1Tip, capsule2Base, capsule2Tip);
+	const std::pair<Math::vec3, Math::vec3> bestOnCapsules = closestPointSegmentSegment(capsule1->base, capsule1->tip, capsule2->base, capsule2->tip);
 
 	ColliderSphere sphereFromCapsule1;
-	sphereFromCapsule1.center = { bestOnCapsules.first.x, bestOnCapsules.first.y, bestOnCapsules.first.z };
+	sphereFromCapsule1.center = bestOnCapsules.first;
 	sphereFromCapsule1.radius = capsule1->radius;
 
 	ColliderSphere sphereFromCapsule2;
-	sphereFromCapsule2.center = { bestOnCapsules.second.x, bestOnCapsules.second.y, bestOnCapsules.second.z };
+	sphereFromCapsule2.center = bestOnCapsules.second;
 	sphereFromCapsule2.radius = capsule2->radius;
 
 	return intersect(&sphereFromCapsule1, &sphereFromCapsule2);
@@ -428,7 +409,7 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderCapsule* capsule, const ColliderSphere* sphere) {
 	IntersectionInformation intersectionInformation = intersect(sphere, capsule);
 	if (intersectionInformation.hasIntersected) {
-		intersectionInformation.intersectionNormal = { intersectionInformation.intersectionNormal[0] * -1.0f, intersectionInformation.intersectionNormal[1] * -1.0f, intersectionInformation.intersectionNormal[2] * -1.0f };
+		intersectionInformation.intersectionNormal = intersectionInformation.intersectionNormal * -1.0f;
 	}
 
 	return intersectionInformation;
@@ -437,7 +418,7 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderAABB* aabb, const ColliderSphere* sphere) {
 	IntersectionInformation intersectionInformation = intersect(sphere, aabb);
 	if (intersectionInformation.hasIntersected) {
-		intersectionInformation.intersectionNormal = { intersectionInformation.intersectionNormal[0] * -1.0f, intersectionInformation.intersectionNormal[1] * -1.0f, intersectionInformation.intersectionNormal[2] * -1.0f };
+		intersectionInformation.intersectionNormal = intersectionInformation.intersectionNormal * -1.0;
 	}
 
 	return intersectionInformation;
@@ -446,7 +427,7 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderCapsule* capsule, const ColliderAABB* aabb) {
 	IntersectionInformation intersectionInformation = intersect(aabb, capsule);
 	if (intersectionInformation.hasIntersected) {
-		intersectionInformation.intersectionNormal = { intersectionInformation.intersectionNormal[0] * -1.0f, intersectionInformation.intersectionNormal[1] * -1.0f, intersectionInformation.intersectionNormal[2] * -1.0f };
+		intersectionInformation.intersectionNormal = intersectionInformation.intersectionNormal * -1.0;
 	}
 
 	return intersectionInformation;
@@ -479,14 +460,14 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::gjk(const ColliderSha
 			intersectionInformation.hasIntersected = true;
 
 			const std::pair<Math::vec3, float> intersectionNormalAndDepth = epa(shape1, shape2, simplex);
-			intersectionInformation.intersectionNormal = { intersectionNormalAndDepth.first[0], intersectionNormalAndDepth.first[1], intersectionNormalAndDepth.first[2] };
+			intersectionInformation.intersectionNormal = intersectionNormalAndDepth.first;
 			intersectionInformation.intersectionDepth = intersectionNormalAndDepth.second + 0.001f;
 
 			return intersectionInformation;
 		}
 	}
 
-	NTSHENGN_MODULE_ERROR("Reached impossible path.", Result::ModuleError);
+	NTSHENGN_MODULE_ERROR("Reached impossible path in GJK.", Result::ModuleError);
 }
 
 bool NtshEngn::PhysicsModule::simplexContainsOrigin(GJKSimplex& simplex, Math::vec3& direction) {
@@ -611,15 +592,15 @@ NtshEngn::Math::vec3 NtshEngn::PhysicsModule::getCenter(const ColliderShape* sha
 }
 
 NtshEngn::Math::vec3 NtshEngn::PhysicsModule::getCenter(const ColliderSphere* sphere) {
-	return Math::vec3(sphere->center.data());
+	return sphere->center;
 }
 
 NtshEngn::Math::vec3 NtshEngn::PhysicsModule::getCenter(const ColliderAABB* aabb) {
-	return Math::vec3((aabb->min[0] + aabb->max[0]) / 2.0f, (aabb->min[1] + aabb->max[1]) / 2.0f, (aabb->min[2] + aabb->max[2]) / 2.0f);
+	return (aabb->min + aabb->max) / 2.0f;
 }
 
 NtshEngn::Math::vec3 NtshEngn::PhysicsModule::getCenter(const ColliderCapsule* capsule) {
-	return Math::vec3((capsule->base[0] + capsule->tip[0]) / 2.0f, (capsule->base[1] + capsule->tip[1]) / 2.0f, (capsule->base[2] + capsule->tip[2]) / 2.0f);
+	return (capsule->base + capsule->tip) / 2.0f;
 }
 
 NtshEngn::Math::vec3 NtshEngn::PhysicsModule::support(const ColliderShape* shape1, const ColliderShape* shape2, const Math::vec3& direction) {
@@ -646,21 +627,19 @@ NtshEngn::Math::vec3 NtshEngn::PhysicsModule::getFarthestPointInDirection(const 
 NtshEngn::Math::vec3 NtshEngn::PhysicsModule::getFarthestPointInDirection(const ColliderSphere* sphere, const Math::vec3& direction) {
 	const float directionLength = direction.length();
 
-	return Math::vec3(sphere->center.data()) + direction * (sphere->radius / directionLength);
+	return sphere->center + direction * (sphere->radius / directionLength);
 }
 
 NtshEngn::Math::vec3 NtshEngn::PhysicsModule::getFarthestPointInDirection(const ColliderAABB* aabb, const Math::vec3& direction) {
-	return Math::vec3(direction.x >= 0.0f ? aabb->max[0] : aabb->min[0],
-		direction.y >= 0.0f ? aabb->max[1] : aabb->min[1],
-		direction.z >= 0.0f ? aabb->max[2] : aabb->min[2]);
+	return Math::vec3(direction.x >= 0.0f ? aabb->max.x : aabb->min.x,
+		direction.y >= 0.0f ? aabb->max.y : aabb->min.y,
+		direction.z >= 0.0f ? aabb->max.z : aabb->min.z);
 }
 
 NtshEngn::Math::vec3 NtshEngn::PhysicsModule::getFarthestPointInDirection(const ColliderCapsule* capsule, const Math::vec3& direction) {
 	const float directionLength = direction.length();
-	const Math::vec3 capsuleBase = Math::vec3(capsule->base.data());
-	const Math::vec3 capsuleTip = Math::vec3(capsule->tip.data());
 
-	return ((Math::dot(direction, Math::vec3(capsuleTip - capsuleBase)) >= 0.0) ? capsuleTip : capsuleBase) + direction * (capsule->radius / directionLength);
+	return ((Math::dot(direction, Math::vec3(capsule->tip - capsule->base)) >= 0.0) ? capsule->tip : capsule->base) + direction * (capsule->radius / directionLength);
 }
 
 std::pair<NtshEngn::Math::vec3, float> NtshEngn::PhysicsModule::epa(const ColliderShape* shape1, const ColliderShape* shape2, GJKSimplex& simplex) {
@@ -795,21 +774,21 @@ void NtshEngn::PhysicsModule::transform(ColliderShape* shape, const Math::vec3& 
 }
 
 void NtshEngn::PhysicsModule::transform(ColliderSphere* sphere, const Math::vec3& translation, const Math::vec3& scale) {
-	sphere->center = { translation.x, translation.y, translation.z };
+	sphere->center = translation;
 	sphere->radius *= std::max(std::abs(scale.x), std::max(std::abs(scale.y), std::abs(scale.z)));
 }
 
 void NtshEngn::PhysicsModule::transform(ColliderAABB* aabb, const Math::vec3& translation, const Math::vec3& rotation, const Math::vec3& scale) {
 	ColliderAABB newAABB;
-	newAABB.min = { translation.x, translation.y, translation.z };
-	newAABB.max = { translation.x, translation.y, translation.z };
+	newAABB.min = translation;
+	newAABB.max = translation;
 
 	float a;
 	float b;
 
-	const Math::mat4 rotationMatrix = Math::rotate(rotation[0], Math::vec3(1.0f, 0.0f, 0.0f)) *
-		Math::rotate(rotation[1], Math::vec3(0.0f, 1.0f, 0.0f)) *
-		Math::rotate(rotation[2], Math::vec3(0.0f, 0.0f, 1.0f));
+	const Math::mat4 rotationMatrix = Math::rotate(rotation.x, Math::vec3(1.0f, 0.0f, 0.0f)) *
+		Math::rotate(rotation.y, Math::vec3(0.0f, 1.0f, 0.0f)) *
+		Math::rotate(rotation.z, Math::vec3(0.0f, 0.0f, 1.0f));
 
 	for (uint8_t i = 0; i < 3; i++) {
 		for (uint8_t j = 0; j < 3; j++) {
@@ -826,17 +805,17 @@ void NtshEngn::PhysicsModule::transform(ColliderAABB* aabb, const Math::vec3& tr
 }
 
 void NtshEngn::PhysicsModule::transform(ColliderCapsule* capsule, const Math::vec3& translation, const Math::vec3& rotation, const Math::vec3& scale) {
-	capsule->base = { capsule->base[0] + translation.x, capsule->base[1] + translation.y, capsule->base[2] + translation.z };
-	capsule->tip = { capsule->tip[0] + translation.x, capsule->tip[1] + translation.y, capsule->tip[2] + translation.z };
+	capsule->base += translation;
+	capsule->tip += translation;
 
-	const Math::mat4 rotationMatrix = Math::rotate(rotation[0], Math::vec3(1.0f, 0.0f, 0.0f)) *
-		Math::rotate(rotation[1], Math::vec3(0.0f, 1.0f, 0.0f)) *
-		Math::rotate(rotation[2], Math::vec3(0.0f, 0.0f, 1.0f));
+	const Math::mat4 rotationMatrix = Math::rotate(rotation.x, Math::vec3(1.0f, 0.0f, 0.0f)) *
+		Math::rotate(rotation.y, Math::vec3(0.0f, 1.0f, 0.0f)) *
+		Math::rotate(rotation.z, Math::vec3(0.0f, 0.0f, 1.0f));
 	const Math::vec3 tipMinusBase = Math::vec3(capsule->tip.data()) - Math::vec3(capsule->base.data());
 
 	const Math::vec3 tipRotation = Math::vec3(rotationMatrix * Math::vec4(tipMinusBase, 1.0f));
 
-	capsule->tip = { tipRotation.x + capsule->base[0], tipRotation.y + capsule->base[1], tipRotation.z + capsule->base[2]};
+	capsule->tip = tipRotation + capsule->base;
 	capsule->radius *= std::max(std::abs(scale.x), std::max(std::abs(scale.y), std::abs(scale.z)));
 }
 
