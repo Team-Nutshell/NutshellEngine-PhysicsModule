@@ -59,6 +59,108 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 	}
 }
 
+std::vector<NtshEngn::RaycastInformation> NtshEngn::PhysicsModule::raycast(const Math::vec3& rayOrigin, const Math::vec3& rayDirection, float tMin, float tMax) {
+	std::vector<RaycastInformation> raycastInformations;
+
+	const Math::vec3 invRayDirection = Math::vec3(1.0f / rayDirection.x, 1.0f / rayDirection.y, 1.0f / rayDirection.z);
+
+	for (Entity entity : entities) {
+		const Transform& entityTransform = ecs->getComponent<Transform>(entity);
+
+		if (ecs->hasComponent<SphereCollidable>(entity)) {
+			ColliderSphere colliderSphere = ecs->getComponent<SphereCollidable>(entity).collider;
+			transform(&colliderSphere, entityTransform.position, entityTransform.rotation, entityTransform.scale);
+
+			const Math::vec3 co = rayOrigin - colliderSphere.center;
+			const float a = Math::dot(rayDirection, rayDirection);
+			const float b = 2.0f * Math::dot(co, rayDirection);
+			const float c = Math::dot(co, co) - (colliderSphere.radius * colliderSphere.radius);
+			const float discriminant = (b * b) - (4.0f * a * c);
+
+			if (discriminant < 0.0f) {
+				continue;
+			}
+
+			const float distance = (-b - (std::sqrt(discriminant) / (2.0f * a)));
+			if ((distance >= tMin) && (distance <= tMax)) {
+				RaycastInformation raycastInformation;
+				raycastInformation.entity = entity;
+				raycastInformation.distance = distance;
+				raycastInformations.push_back(raycastInformation);
+			}
+		}
+		else if (ecs->hasComponent<AABBCollidable>(entity)) {
+			ColliderAABB colliderAABB = ecs->getComponent<AABBCollidable>(entity).collider;
+			transform(&colliderAABB, entityTransform.position, entityTransform.rotation, entityTransform.scale);
+
+			const float t1 = (colliderAABB.min.x - rayOrigin.x) * invRayDirection.x;
+			const float t2 = (colliderAABB.max.x - rayOrigin.x) * invRayDirection.x;
+			const float t3 = (colliderAABB.min.y - rayOrigin.y) * invRayDirection.y;
+			const float t4 = (colliderAABB.max.y - rayOrigin.y) * invRayDirection.y;
+			const float t5 = (colliderAABB.min.z - rayOrigin.z) * invRayDirection.z;
+			const float t6 = (colliderAABB.max.z - rayOrigin.z) * invRayDirection.z;
+
+			const float distanceMin = std::max(std::max(std::min(t1, t2), std::min(t3, t4)), std::min(t5, t6));
+			const float distanceMax = std::min(std::min(std::max(t1, t2), std::max(t3, t4)), std::max(t5, t6));
+			if ((distanceMax >= 0.0f) && (distanceMin <= distanceMax) && ((distanceMin >= tMin) && (distanceMin <= tMax))) {
+				RaycastInformation raycastInformation;
+				raycastInformation.entity = entity;
+				raycastInformation.distance = distanceMin;
+				raycastInformations.push_back(raycastInformation);
+			}
+		}
+		else if (ecs->hasComponent<CapsuleCollidable>(entity)) {
+			ColliderCapsule colliderCapsule = ecs->getComponent<CapsuleCollidable>(entity).collider;
+			transform(&colliderCapsule, entityTransform.position, entityTransform.rotation, entityTransform.scale);
+
+			const Math::vec3 ab = colliderCapsule.tip - colliderCapsule.base;
+			const Math::vec3 ao = rayOrigin - colliderCapsule.base;
+
+			const float abab = Math::dot(ab, ab);
+			const float aoao = Math::dot(ao, ao);
+			const float abrd = Math::dot(ab, rayDirection);
+			const float abao = Math::dot(ab, ao);
+			const float rdao = Math::dot(rayDirection, ao);
+
+			const float a = abab - (abrd * abrd);
+			float b = (abab * rdao) - (abao * abrd);
+			float c = (abab * aoao) - (abao * abao) - (colliderCapsule.radius * colliderCapsule.radius * abab);
+			float h = (b * b) - (a * c);
+			if (h >= 0.0f) {
+				float distance = (-b - std::sqrt(h)) / a;
+				const float y = abao + (distance * abrd);
+				if ((y > 0.0) && (y < abab) && ((distance >= tMin) && (distance <= tMax))) {
+					RaycastInformation raycastInformation;
+					raycastInformation.entity = entity;
+					raycastInformation.distance = distance;
+					raycastInformations.push_back(raycastInformation);
+
+					continue;
+				}
+
+				const Math::vec3 co = (y <= 0.0f) ? ao : (rayOrigin - colliderCapsule.tip);
+				b = Math::dot(rayDirection, co);
+				c = Math::dot(co, co) - (colliderCapsule.radius * colliderCapsule.radius);
+
+				h = (b * b) - c;
+				distance = -b - std::sqrt(h);
+				if ((h > 0.0f) && ((distance >= tMin) && (distance <= tMax))) {
+					RaycastInformation raycastInformation;
+					raycastInformation.entity = entity;
+					raycastInformation.distance = distance;
+					raycastInformations.push_back(raycastInformation);
+				}
+			}
+		}
+	}
+
+	std::sort(raycastInformations.begin(), raycastInformations.end(), [](RaycastInformation raycastInformationA, RaycastInformation raycastInformationB) {
+		return raycastInformationA.distance < raycastInformationB.distance;
+		});
+
+	return raycastInformations;
+}
+
 const NtshEngn::ComponentMask NtshEngn::PhysicsModule::getComponentMask() const {
 	ComponentMask componentMask;
 	componentMask.set(ecs->getComponentId<Rigidbody>());
@@ -92,9 +194,7 @@ void NtshEngn::PhysicsModule::eulerIntegrator(float dtSeconds) {
 
 			entityRigidbodyState.velocity += entityRigidbodyState.acceleration * dtSeconds;
 
-			entityTransform.position[0] += entityRigidbodyState.velocity.x * dtSeconds;
-			entityTransform.position[1] += entityRigidbodyState.velocity.y * dtSeconds;
-			entityTransform.position[2] += entityRigidbodyState.velocity.z * dtSeconds;
+			entityTransform.position += entityRigidbodyState.velocity * dtSeconds;
 		}
 		else {
 			entityRigidbodyState.velocity = { 0.0f, 0.0f, 0.0f };
