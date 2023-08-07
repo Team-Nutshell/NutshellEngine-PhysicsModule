@@ -28,6 +28,16 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 	return intersectionInformation;
 }
 
+std::vector<NtshEngn::RaycastInformation> NtshEngn::PhysicsModule::raycast(const Math::vec3& rayOrigin, const Math::vec3& rayDirection, float tMin, float tMax) {
+	NTSHENGN_UNUSED(rayOrigin);
+	NTSHENGN_UNUSED(rayDirection);
+	NTSHENGN_UNUSED(tMin);
+	NTSHENGN_UNUSED(tMax);
+	NTSHENGN_MODULE_FUNCTION_NOT_IMPLEMENTED();
+
+	return std::vector<NtshEngn::RaycastInformation>();
+}
+
 extern "C" NTSHENGN_MODULE_API NtshEngn::PhysicsModuleInterface* createModule() {
 	return new NtshEngn::PhysicsModule;
 }
