@@ -86,6 +86,7 @@ std::vector<NtshEngn::RaycastInformation> NtshEngn::PhysicsModule::raycast(const
 				RaycastInformation raycastInformation;
 				raycastInformation.entity = entity;
 				raycastInformation.distance = distance;
+				raycastInformation.normal = Math::normalize((rayOrigin + (rayDirection * distance)) - colliderSphere.center);
 				raycastInformations.push_back(raycastInformation);
 			}
 		}
@@ -103,9 +104,30 @@ std::vector<NtshEngn::RaycastInformation> NtshEngn::PhysicsModule::raycast(const
 			const float distanceMin = std::max(std::max(std::min(t1, t2), std::min(t3, t4)), std::min(t5, t6));
 			const float distanceMax = std::min(std::min(std::max(t1, t2), std::max(t3, t4)), std::max(t5, t6));
 			if ((distanceMax >= 0.0f) && (distanceMin <= distanceMax) && ((distanceMin >= tMin) && (distanceMin <= tMax))) {
+				Math::vec3 normal;
+				if (distanceMin == t1) {
+					normal = Math::vec3(-1.0f, 0.0f, 0.0f);
+				}
+				else if (distanceMin == t2) {
+					normal = Math::vec3(1.0f, 0.0f, 0.0f);
+				}
+				else if (distanceMin == t3) {
+					normal = Math::vec3(0.0f, -1.0f, 0.0f);
+				}
+				else if (distanceMin == t4) {
+					normal = Math::vec3(0.0f, 1.0f, 0.0f);
+				}
+				else if (distanceMin == t5) {
+					normal = Math::vec3(0.0f, 0.0f, -1.0f);
+				}
+				else if (distanceMin == t6) {
+					normal = Math::vec3(0.0f, 0.0f, 1.0f);
+				}
+
 				RaycastInformation raycastInformation;
 				raycastInformation.entity = entity;
 				raycastInformation.distance = distanceMin;
+				raycastInformation.normal = normal;
 				raycastInformations.push_back(raycastInformation);
 			}
 		}
@@ -130,9 +152,13 @@ std::vector<NtshEngn::RaycastInformation> NtshEngn::PhysicsModule::raycast(const
 				float distance = (-b - std::sqrt(h)) / a;
 				const float y = abao + (distance * abrd);
 				if ((y > 0.0) && (y < abab) && ((distance >= tMin) && (distance <= tMax))) {
+					const Math::vec3 position = rayOrigin + (rayDirection * distance);
+					const Math::vec3 ap = position - colliderCapsule.base;
+
 					RaycastInformation raycastInformation;
 					raycastInformation.entity = entity;
 					raycastInformation.distance = distance;
+					raycastInformation.normal = (ap - (ab * std::clamp(Math::dot(ap, ab) / Math::dot(ab, ab), 0.0f, 1.0f))) / colliderCapsule.radius;
 					raycastInformations.push_back(raycastInformation);
 
 					continue;
@@ -145,9 +171,13 @@ std::vector<NtshEngn::RaycastInformation> NtshEngn::PhysicsModule::raycast(const
 				h = (b * b) - c;
 				distance = -b - std::sqrt(h);
 				if ((h > 0.0f) && ((distance >= tMin) && (distance <= tMax))) {
+					const Math::vec3 position = rayOrigin + (rayDirection * distance);
+					const Math::vec3 ap = position - colliderCapsule.base;
+
 					RaycastInformation raycastInformation;
 					raycastInformation.entity = entity;
 					raycastInformation.distance = distance;
+					raycastInformation.normal = (ap - (ab * std::clamp(Math::dot(ap, ab) / Math::dot(ab, ab), 0.0f, 1.0f))) / colliderCapsule.radius;
 					raycastInformations.push_back(raycastInformation);
 				}
 			}
