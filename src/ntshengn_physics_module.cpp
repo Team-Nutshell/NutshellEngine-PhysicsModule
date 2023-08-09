@@ -81,7 +81,7 @@ std::vector<NtshEngn::RaycastInformation> NtshEngn::PhysicsModule::raycast(const
 				continue;
 			}
 
-			const float distance = (-b - (std::sqrt(discriminant) / (2.0f * a)));
+			const float distance = (-b - (std::sqrt(discriminant))) / (2.0f * a);
 			if ((distance >= tMin) && (distance <= tMax)) {
 				RaycastInformation raycastInformation;
 				raycastInformation.entity = entity;
