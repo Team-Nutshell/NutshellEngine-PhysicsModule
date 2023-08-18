@@ -11,6 +11,9 @@ void NtshEngn::PhysicsModule::init() {
 }
 
 void NtshEngn::PhysicsModule::update(double dt) {
+	if (dt > (1000.0 / 60.0)) {
+		dt = 1000.0 / 60.0;
+	}
 	const float dtSeconds = static_cast<float>(dt / 1000.0);
 
 	// Euler integrator
@@ -237,7 +240,7 @@ void NtshEngn::PhysicsModule::eulerIntegrator(float dtSeconds) {
 void NtshEngn::PhysicsModule::collisionsDetection() {
 	std::mutex mutex;
 
-	jobSystem->dispatch(static_cast<uint32_t>(entities.size()), (static_cast<uint32_t>(entities.size()) / jobSystem->getNumThreads()) + 1, [this, &mutex](JobDispatchArguments args) {
+	jobSystem->dispatch(static_cast<uint32_t>(entities.size()), (static_cast<uint32_t>(entities.size()) + jobSystem->getNumThreads() - 1) / jobSystem->getNumThreads(), [this, &mutex](JobDispatchArguments args) {
 		std::set<Entity>::iterator it = entities.begin();
 		std::advance(it, args.jobIndex);
 
