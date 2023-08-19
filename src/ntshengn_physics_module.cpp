@@ -527,6 +527,56 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 
 	const Math::vec3 sphereOnAABB = Math::vec3(x, y, z);
 
+	if (sphereOnAABB == sphere->center) {
+		intersectionInformation.hasIntersected = true;
+
+		const Math::vec3 aabbCenter = getCenter(aabb);
+		if (aabbCenter == sphere->center) {
+			intersectionInformation.intersectionNormal = Math::vec3(0.0f, 1.0f, 0.0f);
+			intersectionInformation.intersectionDepth = ((aabb->max.y - aabb->min.y) / 2.0f) + sphere->radius;
+
+			return intersectionInformation;
+		}
+
+		Math::vec3 closestSegment;
+
+		const std::array<Math::vec3, 6> normals = {
+			Math::vec3(-1.0f, 0.0f, 0.0f),
+			Math::vec3(1.0f, 0.0f, 0.0f),
+			Math::vec3(0.0f, -1.0f, 0.0f),
+			Math::vec3(0.0f, 1.0f, 0.0f),
+			Math::vec3(0.0f, 0.0f, -1.0f),
+			Math::vec3(0.0f, 0.0f, 1.0f)
+		};
+
+		const std::array<float, 6> distances = {
+			aabb->max.x - sphere->center.x,
+			sphere->center.x - aabb->min.x,
+			aabb->max.y - sphere->center.y,
+			sphere->center.y - aabb->min.y,
+			aabb->max.z - sphere->center.z,
+			sphere->center.z - aabb->min.z
+		};
+
+		uint8_t collidedFace = 0;
+		for (uint8_t i = 0; i < 6; i++) {
+			if (distances[i] <= 0.0f) {
+				intersectionInformation.hasIntersected = false;
+
+				return intersectionInformation;
+			}
+
+			if (distances[i] < distances[collidedFace]) {
+				collidedFace = i;
+			}
+		}
+
+		intersectionInformation.intersectionNormal = normals[collidedFace];
+		intersectionInformation.intersectionDepth = distances[collidedFace] + sphere->radius;
+
+		return intersectionInformation;
+	}
+
 	const float distance = (sphereOnAABB - sphere->center).length();
 
 	if ((distance < 0.000001f) || (distance >= sphere->radius)) {
@@ -565,16 +615,15 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 	};
 
 	const std::array<float, 6> distances = {
-		aabb2->max[0] - aabb1->min[0],
-		aabb1->max[0] - aabb2->min[0],
-		aabb2->max[1] - aabb1->min[1],
-		aabb1->max[1] - aabb2->min[1],
-		aabb2->max[2] - aabb1->min[2],
-		aabb1->max[2] - aabb2->min[2]
+		aabb2->max.x - aabb1->min.x,
+		aabb1->max.x - aabb2->min.x,
+		aabb2->max.y - aabb1->min.y,
+		aabb1->max.y - aabb2->min.y,
+		aabb2->max.z - aabb1->min.z,
+		aabb1->max.z - aabb2->min.z
 	};
 
 	uint8_t collidedFace = 0;
-
 	for (uint8_t i = 0; i < 6; i++) {
 		if (distances[i] <= 0.0f) {
 			intersectionInformation.hasIntersected = false;
