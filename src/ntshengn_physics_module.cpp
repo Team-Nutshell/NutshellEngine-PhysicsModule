@@ -521,13 +521,13 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderSphere* sphere, const ColliderAABB* aabb) {
 	IntersectionInformation intersectionInformation;
 
-	const float x = std::max(aabb->min[0], std::min(sphere->center[0], aabb->max[0]));
-	const float y = std::max(aabb->min[1], std::min(sphere->center[1], aabb->max[1]));
-	const float z = std::max(aabb->min[2], std::min(sphere->center[2], aabb->max[2]));
+	const float x = std::max(aabb->min.x, std::min(sphere->center.x, aabb->max.x));
+	const float y = std::max(aabb->min.y, std::min(sphere->center.y, aabb->max.y));
+	const float z = std::max(aabb->min.z, std::min(sphere->center.z, aabb->max.z));
 
-	const float distance = std::sqrt((x - sphere->center[0]) * (x - sphere->center[0]) +
-		(y - sphere->center[1]) * (y - sphere->center[1]) +
-		(z - sphere->center[2]) * (z - sphere->center[2]));
+	const Math::vec3 sphereOnAABB = Math::vec3(x, y, z);
+
+	const float distance = (sphereOnAABB - sphere->center).length();
 
 	if ((distance < 0.000001f) || (distance >= sphere->radius)) {
 		intersectionInformation.hasIntersected = false;
@@ -536,7 +536,7 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 	}
 
 	intersectionInformation.hasIntersected = true;
-	intersectionInformation.intersectionNormal = Math::normalize(Math::vec3(x, y, z) - sphere->center);
+	intersectionInformation.intersectionNormal = Math::normalize(sphereOnAABB - sphere->center);
 	intersectionInformation.intersectionDepth = sphere->radius - distance;
 
 	return intersectionInformation;
@@ -602,7 +602,7 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 	const Math::vec3 closestPointOnCapsule = closestPointOnSegment(aabbCenter, capsule->base, capsule->tip);
 
 	ColliderSphere sphereFromCapsule;
-	sphereFromCapsule.center = { closestPointOnCapsule.x, closestPointOnCapsule.y, closestPointOnCapsule.z };
+	sphereFromCapsule.center = closestPointOnCapsule;
 	sphereFromCapsule.radius = capsule->radius;
 
 	return intersect(aabb, &sphereFromCapsule);
