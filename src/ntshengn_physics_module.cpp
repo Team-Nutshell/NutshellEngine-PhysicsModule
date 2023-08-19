@@ -3,6 +3,7 @@
 #include "../Module/utils/ntshengn_dynamic_library.h"
 #include "../Common/utils/ntshengn_defines.h"
 #include "../Common/utils/ntshengn_enums.h"
+#include "../Common/utils/ntshengn_utils_octree.h"
 #include <algorithm>
 #include <limits>
 #include <cmath>
@@ -238,97 +239,12 @@ void NtshEngn::PhysicsModule::eulerIntegrator(float dtSeconds) {
 }
 
 void NtshEngn::PhysicsModule::collisionsDetection() {
-	std::mutex mutex;
-
-	jobSystem->dispatch(static_cast<uint32_t>(entities.size()), (static_cast<uint32_t>(entities.size()) + jobSystem->getNumThreads() - 1) / jobSystem->getNumThreads(), [this, &mutex](JobDispatchArguments args) {
-		std::set<Entity>::iterator it = entities.begin();
-		std::advance(it, args.jobIndex);
-
-		Entity entity = *it;
-
-		const Rigidbody& entityRigidbody = ecs->getComponent<Rigidbody>(entity);
-
-		ColliderShape* colliderShape = nullptr;
-
-		ColliderSphere colliderSphere;
-		ColliderAABB colliderAABB;
-		ColliderCapsule colliderCapsule;
-		if (ecs->hasComponent<SphereCollidable>(entity)) {
-			colliderSphere = ecs->getComponent<SphereCollidable>(entity).collider;
-			colliderShape = &colliderSphere;
-		}
-		else if (ecs->hasComponent<AABBCollidable>(entity)) {
-			colliderAABB = ecs->getComponent<AABBCollidable>(entity).collider;
-			colliderShape = &colliderAABB;
-		}
-		else if (ecs->hasComponent<CapsuleCollidable>(entity)) {
-			colliderCapsule = ecs->getComponent<CapsuleCollidable>(entity).collider;
-			colliderShape = &colliderCapsule;
-		}
-
-		if (colliderShape) {
-			const Transform& entityTransform = ecs->getComponent<Transform>(entity);
-			transform(colliderShape, entityTransform.position, entityTransform.rotation, entityTransform.scale);
-
-			std::set<Entity>::iterator otherIt = entities.begin();
-			std::advance(otherIt, std::distance(entities.begin(), it));
-			while (otherIt != entities.end()) {
-				Entity otherEntity = *otherIt;
-				if (otherEntity != entity) {
-					const Rigidbody& otherEntityRigidbody = ecs->getComponent<Rigidbody>(otherEntity);
-					if (entityRigidbody.isStatic && otherEntityRigidbody.isStatic) {
-						otherIt++;
-
-						continue;
-					}
-
-					ColliderShape* otherColliderShape = nullptr;
-
-					ColliderSphere otherColliderSphere;
-					ColliderAABB otherColliderAABB;
-					ColliderCapsule otherColliderCapsule;
-					if (ecs->hasComponent<SphereCollidable>(otherEntity)) {
-						otherColliderSphere = ecs->getComponent<SphereCollidable>(otherEntity).collider;
-						otherColliderShape = &otherColliderSphere;
-					}
-					else if (ecs->hasComponent<AABBCollidable>(otherEntity)) {
-						otherColliderAABB = ecs->getComponent<AABBCollidable>(otherEntity).collider;
-						otherColliderShape = &otherColliderAABB;
-					}
-					else if (ecs->hasComponent<CapsuleCollidable>(otherEntity)) {
-						otherColliderCapsule = ecs->getComponent<CapsuleCollidable>(otherEntity).collider;
-						otherColliderShape = &otherColliderCapsule;
-					}
-
-					if (otherColliderShape) {
-						const Transform& otherEntityTransform = ecs->getComponent<Transform>(otherEntity);
-						transform(otherColliderShape, otherEntityTransform.position, otherEntityTransform.rotation, otherEntityTransform.scale);
-
-						IntersectionInformation intersectionInformation = intersect(colliderShape, otherColliderShape);
-						if (intersectionInformation.hasIntersected) {
-							Collision collision;
-							collision.entity1 = entity;
-							collision.entity2 = otherEntity;
-							collision.intersectionNormal = Math::vec3(intersectionInformation.intersectionNormal.data());
-							collision.intersectionDepth = intersectionInformation.intersectionDepth;
-
-							std::unique_lock<std::mutex> lock(mutex);
-							m_collisions.push_back(collision);
-							lock.unlock();
-						}
-					}
-				}
-
-				otherIt++;
-			}
-		}
-		});
-
-	jobSystem->wait();
+	collisionsBroadphase();
+	collisionsNarrowphase();
 }
 
 void NtshEngn::PhysicsModule::collisionsResponse() {
-	for (const Collision& collision : m_collisions) {
+	for (const NarrowphaseCollision& collision : m_narrowphaseCollisions) {
 		const Rigidbody& entity1Rigidbody = ecs->getComponent<Rigidbody>(collision.entity1);
 		RigidbodyState& entity1RigidbodyState = m_rigidbodyStates[collision.entity1];
 
@@ -411,7 +327,176 @@ void NtshEngn::PhysicsModule::collisionsResponse() {
 			entity2Transform.position[2] += correction.z;
 		}
 	}
-	m_collisions.clear();
+}
+
+void NtshEngn::PhysicsModule::collisionsBroadphase() {
+	m_broadphaseCollisions.clear();
+
+	ColliderAABB sceneAABB;
+
+	std::unordered_map<Entity, EntityAABB> entityAABBs;
+	for (const Entity& entity : entities) {
+		EntityAABB entityAABB;
+
+		const Transform& entityTransform = ecs->getComponent<Transform>(entity);
+
+		if (ecs->hasComponent<SphereCollidable>(entity)) {
+			ColliderSphere colliderSphere = ecs->getComponent<SphereCollidable>(entity).collider;
+			transform(&colliderSphere, entityTransform.position, entityTransform.rotation, entityTransform.scale);
+
+			entityAABB.position = colliderSphere.center;
+			entityAABB.size = Math::vec3(colliderSphere.radius);
+		}
+		else if (ecs->hasComponent<AABBCollidable>(entity)) {
+			ColliderAABB colliderAABB = ecs->getComponent<AABBCollidable>(entity).collider;
+			transform(&colliderAABB, entityTransform.position, entityTransform.rotation, entityTransform.scale);
+
+			entityAABB.position = getCenter(&colliderAABB);
+			entityAABB.size = (colliderAABB.max - colliderAABB.min) / 2.0f;
+		}
+		else if (ecs->hasComponent<CapsuleCollidable>(entity)) {
+			ColliderCapsule colliderCapsule = ecs->getComponent<CapsuleCollidable>(entity).collider;
+			transform(&colliderCapsule, entityTransform.position, entityTransform.rotation, entityTransform.scale);
+
+			entityAABB.position = getCenter(&colliderCapsule);
+
+			ColliderAABB baseAABB;
+			baseAABB.min = colliderCapsule.base - Math::vec3(colliderCapsule.radius);
+			baseAABB.max = colliderCapsule.base + Math::vec3(colliderCapsule.radius);
+
+			ColliderAABB tipAABB;
+			baseAABB.min = colliderCapsule.tip - Math::vec3(colliderCapsule.radius);
+			baseAABB.max = colliderCapsule.tip + Math::vec3(colliderCapsule.radius);
+
+			ColliderAABB capsuleAABB;
+			capsuleAABB.min = Math::vec3(std::min(baseAABB.min.x, tipAABB.min.x), std::min(baseAABB.min.y, tipAABB.min.y), std::min(baseAABB.min.z, tipAABB.min.z));
+			capsuleAABB.max = Math::vec3(std::max(baseAABB.max.x, tipAABB.max.x), std::max(baseAABB.max.y, tipAABB.max.y), std::max(baseAABB.max.z, tipAABB.max.z));
+
+			entityAABB.size = (capsuleAABB.max - capsuleAABB.min) / 2.0f;
+		}
+		else {
+			continue;
+		}
+
+		entityAABBs[entity] = entityAABB;
+
+		if ((entityAABB.position.x - entityAABB.size.x) < sceneAABB.min.x) {
+			sceneAABB.min.x = entityAABB.position.x - entityAABB.size.x;
+		}
+		if ((entityAABB.position.y - entityAABB.size.y) < sceneAABB.min.y) {
+			sceneAABB.min.y = entityAABB.position.y - entityAABB.size.y;
+		}
+		if ((entityAABB.position.z - entityAABB.size.z) < sceneAABB.min.z) {
+			sceneAABB.min.z = entityAABB.position.z - entityAABB.size.z;
+		}
+
+		if ((entityAABB.position.x + entityAABB.size.x) > sceneAABB.max.x) {
+			sceneAABB.max.x = entityAABB.position.x + entityAABB.size.x;
+		}
+		if ((entityAABB.position.y + entityAABB.size.y) > sceneAABB.max.y) {
+			sceneAABB.max.y = entityAABB.position.y + entityAABB.size.y;
+		}
+		if ((entityAABB.position.z + entityAABB.size.z) > sceneAABB.max.z) {
+			sceneAABB.max.z = entityAABB.position.z + entityAABB.size.z;
+		}
+	}
+
+	Octree<Entity> octree = Octree<Entity>(getCenter(&sceneAABB), ((sceneAABB.max - sceneAABB.min) / 2.0f) * 100.0f, 6);
+	for (const auto& it : entityAABBs) {
+		octree.insert(it.first, it.second.position, it.second.size);
+	}
+
+	octree.execute([this](std::vector<Octree<Entity>::Entry>& entries) {
+		for (std::vector<Octree<Entity>::Entry>::iterator i = entries.begin(); i != entries.end(); i++) {
+			for (std::vector<Octree<Entity>::Entry>::iterator j = std::next(i); j != entries.end(); j++) {
+				BroadphaseCollision broadphaseCollision;
+				broadphaseCollision.entity1 = std::min(i->object, j->object);
+				broadphaseCollision.entity2 = std::max(i->object, j->object);
+
+				const Rigidbody& entity1Rigidbody = ecs->getComponent<Rigidbody>(broadphaseCollision.entity1);
+				const Rigidbody& entity2Rigidbody = ecs->getComponent<Rigidbody>(broadphaseCollision.entity2);
+
+				if (entity1Rigidbody.isStatic && entity2Rigidbody.isStatic) {
+					return;
+				}
+
+				m_broadphaseCollisions.insert(broadphaseCollision);
+			}
+		}
+		});
+}
+
+void NtshEngn::PhysicsModule::collisionsNarrowphase() {
+	m_narrowphaseCollisions.clear();
+
+	std::mutex mutex;
+
+	jobSystem->dispatch(static_cast<uint32_t>(m_broadphaseCollisions.size()), (static_cast<uint32_t>(m_broadphaseCollisions.size()) + jobSystem->getNumThreads() - 1) / jobSystem->getNumThreads(), [this, &mutex](JobDispatchArguments args) {
+		std::set<BroadphaseCollision>::iterator it = m_broadphaseCollisions.begin();
+		std::advance(it, args.jobIndex);
+
+		const BroadphaseCollision& broadphaseCollision = *it;
+
+		const Entity entity1 = broadphaseCollision.entity1;
+		const Entity entity2 = broadphaseCollision.entity2;
+
+		ColliderShape* collider1Shape = nullptr;
+
+		ColliderSphere collider1Sphere;
+		ColliderAABB collider1AABB;
+		ColliderCapsule collider1Capsule;
+		if (ecs->hasComponent<SphereCollidable>(entity1)) {
+			collider1Sphere = ecs->getComponent<SphereCollidable>(entity1).collider;
+			collider1Shape = &collider1Sphere;
+		}
+		else if (ecs->hasComponent<AABBCollidable>(entity1)) {
+			collider1AABB = ecs->getComponent<AABBCollidable>(entity1).collider;
+			collider1Shape = &collider1AABB;
+		}
+		else if (ecs->hasComponent<CapsuleCollidable>(entity1)) {
+			collider1Capsule = ecs->getComponent<CapsuleCollidable>(entity1).collider;
+			collider1Shape = &collider1Capsule;
+		}
+
+		const Transform& entity1Transform = ecs->getComponent<Transform>(entity1);
+		transform(collider1Shape, entity1Transform.position, entity1Transform.rotation, entity1Transform.scale);
+
+		ColliderShape* collider2Shape = nullptr;
+
+		ColliderSphere collider2Sphere;
+		ColliderAABB collider2AABB;
+		ColliderCapsule collider2Capsule;
+		if (ecs->hasComponent<SphereCollidable>(entity2)) {
+			collider2Sphere = ecs->getComponent<SphereCollidable>(entity2).collider;
+			collider2Shape = &collider2Sphere;
+		}
+		else if (ecs->hasComponent<AABBCollidable>(entity2)) {
+			collider2AABB = ecs->getComponent<AABBCollidable>(entity2).collider;
+			collider2Shape = &collider2AABB;
+		}
+		else if (ecs->hasComponent<CapsuleCollidable>(entity2)) {
+			collider2Capsule = ecs->getComponent<CapsuleCollidable>(entity2).collider;
+			collider2Shape = &collider2Capsule;
+		}
+
+		const Transform& entity2Transform = ecs->getComponent<Transform>(entity2);
+		transform(collider2Shape, entity2Transform.position, entity2Transform.rotation, entity2Transform.scale);
+
+		IntersectionInformation intersectionInformation = intersect(collider1Shape, collider2Shape);
+		if (intersectionInformation.hasIntersected) {
+			NarrowphaseCollision narrowphaseCollision;
+			narrowphaseCollision.entity1 = entity1;
+			narrowphaseCollision.entity2 = entity2;
+			narrowphaseCollision.intersectionNormal = Math::vec3(intersectionInformation.intersectionNormal.data());
+			narrowphaseCollision.intersectionDepth = intersectionInformation.intersectionDepth;
+
+			std::unique_lock<std::mutex> lock(mutex);
+			m_narrowphaseCollisions.push_back(narrowphaseCollision);
+			lock.unlock();
+		}
+		});
+
+	jobSystem->wait();
 }
 
 NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderSphere* sphere1, const ColliderSphere* sphere2) {

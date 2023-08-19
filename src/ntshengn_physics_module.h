@@ -2,6 +2,8 @@
 #include "../Common/module_interfaces/ntshengn_physics_module_interface.h"
 #include "../Common/ecs/ntshengn_ecs.h"
 #include "../Common/utils/ntshengn_utils_math.h"
+#include <set>
+#include <vector>
 #include <unordered_map>
 
 struct RigidbodyState {
@@ -9,7 +11,24 @@ struct RigidbodyState {
 	NtshEngn::Math::vec3 velocity = NtshEngn::Math::vec3(0.0f, 0.0f, 0.0f);
 };
 
-struct Collision {
+struct EntityAABB {
+	NtshEngn::Math::vec3 position;
+	NtshEngn::Math::vec3 size;
+};
+
+struct BroadphaseCollision {
+	NtshEngn::Entity entity1;
+	NtshEngn::Entity entity2;
+
+	bool operator<(const BroadphaseCollision& other) const {
+		size_t hash = static_cast<size_t>(entity1) + (static_cast<size_t>(entity2) << 8);
+		size_t otherHash = static_cast<size_t>(other.entity1) + (static_cast<size_t>(other.entity2) << 8);
+
+		return hash < otherHash;
+	}
+};
+
+struct NarrowphaseCollision {
 	NtshEngn::Entity entity1;
 	NtshEngn::Entity entity2;
 	NtshEngn::Math::vec3 intersectionNormal;
@@ -83,6 +102,9 @@ namespace NtshEngn {
 		void collisionsDetection();
 		void collisionsResponse();
 
+		void collisionsBroadphase();
+		void collisionsNarrowphase();
+
 		IntersectionInformation intersect(const ColliderSphere* sphere1, const ColliderSphere* sphere2);
 		IntersectionInformation intersect(const ColliderSphere* sphere, const ColliderAABB* aabb);
 		IntersectionInformation intersect(const ColliderSphere* sphere, const ColliderCapsule* capsule);
@@ -132,7 +154,8 @@ namespace NtshEngn {
 	private:
 		const Math::vec3 m_gravity = Math::vec3(0.0f, -9.81f, 0.0f);
 
-		std::vector<Collision> m_collisions;
+		std::set<BroadphaseCollision> m_broadphaseCollisions;
+		std::vector<NarrowphaseCollision> m_narrowphaseCollisions;
 
 		std::unordered_map<Entity, RigidbodyState> m_rigidbodyStates;
 	};
