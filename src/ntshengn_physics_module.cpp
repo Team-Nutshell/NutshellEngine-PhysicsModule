@@ -316,15 +316,11 @@ void NtshEngn::PhysicsModule::collisionsResponse() {
 		const Math::vec3 correction = std::max(collision.intersectionDepth, 0.0f) * collision.intersectionNormal;
 
 		if (!entity1Rigidbody.isStatic) {
-			entity1Transform.position[0] -= correction.x;
-			entity1Transform.position[1] -= correction.y;
-			entity1Transform.position[2] -= correction.z;
+			entity1Transform.position -= correction;
 		}
 
 		if (!entity2Rigidbody.isStatic) {
-			entity2Transform.position[0] += correction.x;
-			entity2Transform.position[1] += correction.y;
-			entity2Transform.position[2] += correction.z;
+			entity2Transform.position += correction;
 		}
 	}
 }
