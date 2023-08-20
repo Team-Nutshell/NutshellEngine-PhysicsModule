@@ -538,8 +538,6 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 			return intersectionInformation;
 		}
 
-		Math::vec3 closestSegment;
-
 		const std::array<Math::vec3, 6> normals = {
 			Math::vec3(-1.0f, 0.0f, 0.0f),
 			Math::vec3(1.0f, 0.0f, 0.0f),
