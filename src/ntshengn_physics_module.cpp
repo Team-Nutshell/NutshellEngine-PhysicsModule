@@ -361,8 +361,8 @@ void NtshEngn::PhysicsModule::collisionsBroadphase() {
 			baseAABB.max = colliderCapsule.base + Math::vec3(colliderCapsule.radius);
 
 			ColliderAABB tipAABB;
-			baseAABB.min = colliderCapsule.tip - Math::vec3(colliderCapsule.radius);
-			baseAABB.max = colliderCapsule.tip + Math::vec3(colliderCapsule.radius);
+			tipAABB.min = colliderCapsule.tip - Math::vec3(colliderCapsule.radius);
+			tipAABB.max = colliderCapsule.tip + Math::vec3(colliderCapsule.radius);
 
 			ColliderAABB capsuleAABB;
 			capsuleAABB.min = Math::vec3(std::min(baseAABB.min.x, tipAABB.min.x), std::min(baseAABB.min.y, tipAABB.min.y), std::min(baseAABB.min.z, tipAABB.min.z));
