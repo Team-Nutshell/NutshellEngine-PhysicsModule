@@ -197,19 +197,19 @@ std::vector<NtshEngn::RaycastInformation> NtshEngn::PhysicsModule::raycast(const
 
 const NtshEngn::ComponentMask NtshEngn::PhysicsModule::getComponentMask() const {
 	ComponentMask componentMask;
-	componentMask.set(ecs->getComponentId<Rigidbody>());
+	componentMask.set(ecs->getComponentID<Rigidbody>());
 
 	return componentMask;
 }
 
 void NtshEngn::PhysicsModule::onEntityComponentAdded(Entity entity, Component componentID) {
-	if (componentID == ecs->getComponentId<Rigidbody>()) {
+	if (componentID == ecs->getComponentID<Rigidbody>()) {
 		m_rigidbodyStates[entity] = RigidbodyState();
 	}
 }
 
 void NtshEngn::PhysicsModule::onEntityComponentRemoved(Entity entity, Component componentID) {
-	if (componentID == ecs->getComponentId<Rigidbody>()) {
+	if (componentID == ecs->getComponentID<Rigidbody>()) {
 		m_rigidbodyStates.erase(entity);
 	}
 }
