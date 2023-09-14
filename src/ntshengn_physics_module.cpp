@@ -71,118 +71,122 @@ std::vector<NtshEngn::RaycastInformation> NtshEngn::PhysicsModule::raycast(const
 	for (Entity entity : entities) {
 		const Transform& entityTransform = ecs->getComponent<Transform>(entity);
 
-		if (ecs->hasComponent<SphereCollidable>(entity)) {
-			ColliderSphere colliderSphere = ecs->getComponent<SphereCollidable>(entity).collider;
-			transform(&colliderSphere, entityTransform.position, entityTransform.rotation, entityTransform.scale);
+		if (ecs->hasComponent<Collidable>(entity)) {
+			Collidable collidable = ecs->getComponent<Collidable>(entity);
 
-			const Math::vec3 co = rayOrigin - colliderSphere.center;
-			const float a = Math::dot(rayDirection, rayDirection);
-			const float b = 2.0f * Math::dot(co, rayDirection);
-			const float c = Math::dot(co, co) - (colliderSphere.radius * colliderSphere.radius);
-			const float discriminant = (b * b) - (4.0f * a * c);
+			if (collidable.collider->getType() == ColliderShapeType::Sphere) {
+				ColliderSphere* colliderSphere = static_cast<ColliderSphere*>(collidable.collider.get());
+				transform(colliderSphere, entityTransform.position, entityTransform.rotation, entityTransform.scale);
 
-			if (discriminant < 0.0f) {
-				continue;
-			}
+				const Math::vec3 co = rayOrigin - colliderSphere->center;
+				const float a = Math::dot(rayDirection, rayDirection);
+				const float b = 2.0f * Math::dot(co, rayDirection);
+				const float c = Math::dot(co, co) - (colliderSphere->radius * colliderSphere->radius);
+				const float discriminant = (b * b) - (4.0f * a * c);
 
-			const float distance = (-b - (std::sqrt(discriminant))) / (2.0f * a);
-			if ((distance >= tMin) && (distance <= tMax)) {
-				RaycastInformation raycastInformation;
-				raycastInformation.entity = entity;
-				raycastInformation.distance = distance;
-				raycastInformation.normal = Math::normalize((rayOrigin + (rayDirection * distance)) - colliderSphere.center);
-				raycastInformations.push_back(raycastInformation);
-			}
-		}
-		else if (ecs->hasComponent<AABBCollidable>(entity)) {
-			ColliderAABB colliderAABB = ecs->getComponent<AABBCollidable>(entity).collider;
-			transform(&colliderAABB, entityTransform.position, entityTransform.rotation, entityTransform.scale);
-
-			const float t1 = (colliderAABB.min.x - rayOrigin.x) * invRayDirection.x;
-			const float t2 = (colliderAABB.max.x - rayOrigin.x) * invRayDirection.x;
-			const float t3 = (colliderAABB.min.y - rayOrigin.y) * invRayDirection.y;
-			const float t4 = (colliderAABB.max.y - rayOrigin.y) * invRayDirection.y;
-			const float t5 = (colliderAABB.min.z - rayOrigin.z) * invRayDirection.z;
-			const float t6 = (colliderAABB.max.z - rayOrigin.z) * invRayDirection.z;
-
-			const float distanceMin = std::max(std::max(std::min(t1, t2), std::min(t3, t4)), std::min(t5, t6));
-			const float distanceMax = std::min(std::min(std::max(t1, t2), std::max(t3, t4)), std::max(t5, t6));
-			if ((distanceMax >= 0.0f) && (distanceMin <= distanceMax) && ((distanceMin >= tMin) && (distanceMin <= tMax))) {
-				Math::vec3 normal;
-				if (distanceMin == t1) {
-					normal = Math::vec3(-1.0f, 0.0f, 0.0f);
-				}
-				else if (distanceMin == t2) {
-					normal = Math::vec3(1.0f, 0.0f, 0.0f);
-				}
-				else if (distanceMin == t3) {
-					normal = Math::vec3(0.0f, -1.0f, 0.0f);
-				}
-				else if (distanceMin == t4) {
-					normal = Math::vec3(0.0f, 1.0f, 0.0f);
-				}
-				else if (distanceMin == t5) {
-					normal = Math::vec3(0.0f, 0.0f, -1.0f);
-				}
-				else if (distanceMin == t6) {
-					normal = Math::vec3(0.0f, 0.0f, 1.0f);
-				}
-
-				RaycastInformation raycastInformation;
-				raycastInformation.entity = entity;
-				raycastInformation.distance = distanceMin;
-				raycastInformation.normal = normal;
-				raycastInformations.push_back(raycastInformation);
-			}
-		}
-		else if (ecs->hasComponent<CapsuleCollidable>(entity)) {
-			ColliderCapsule colliderCapsule = ecs->getComponent<CapsuleCollidable>(entity).collider;
-			transform(&colliderCapsule, entityTransform.position, entityTransform.rotation, entityTransform.scale);
-
-			const Math::vec3 ab = colliderCapsule.tip - colliderCapsule.base;
-			const Math::vec3 ao = rayOrigin - colliderCapsule.base;
-
-			const float abab = Math::dot(ab, ab);
-			const float aoao = Math::dot(ao, ao);
-			const float abrd = Math::dot(ab, rayDirection);
-			const float abao = Math::dot(ab, ao);
-			const float rdao = Math::dot(rayDirection, ao);
-
-			const float a = abab - (abrd * abrd);
-			float b = (abab * rdao) - (abao * abrd);
-			float c = (abab * aoao) - (abao * abao) - (colliderCapsule.radius * colliderCapsule.radius * abab);
-			float h = (b * b) - (a * c);
-			if (h >= 0.0f) {
-				float distance = (-b - std::sqrt(h)) / a;
-				const float y = abao + (distance * abrd);
-				if ((y > 0.0) && (y < abab) && ((distance >= tMin) && (distance <= tMax))) {
-					const Math::vec3 position = rayOrigin + (rayDirection * distance);
-					const Math::vec3 ap = position - colliderCapsule.base;
-
-					RaycastInformation raycastInformation;
-					raycastInformation.entity = entity;
-					raycastInformation.distance = distance;
-					raycastInformation.normal = (ap - (ab * std::clamp(Math::dot(ap, ab) / Math::dot(ab, ab), 0.0f, 1.0f))) / colliderCapsule.radius;
-					raycastInformations.push_back(raycastInformation);
-
+				if (discriminant < 0.0f) {
 					continue;
 				}
 
-				const Math::vec3 co = (y <= 0.0f) ? ao : (rayOrigin - colliderCapsule.tip);
-				b = Math::dot(rayDirection, co);
-				c = Math::dot(co, co) - (colliderCapsule.radius * colliderCapsule.radius);
-
-				h = (b * b) - c;
-				distance = -b - std::sqrt(h);
-				if ((h > 0.0f) && ((distance >= tMin) && (distance <= tMax))) {
-					const Math::vec3 position = rayOrigin + (rayDirection * distance);
-					const Math::vec3 ap = position - colliderCapsule.base;
-
+				const float distance = (-b - (std::sqrt(discriminant))) / (2.0f * a);
+				if ((distance >= tMin) && (distance <= tMax)) {
 					RaycastInformation raycastInformation;
 					raycastInformation.entity = entity;
 					raycastInformation.distance = distance;
-					raycastInformation.normal = (ap - (ab * std::clamp(Math::dot(ap, ab) / Math::dot(ab, ab), 0.0f, 1.0f))) / colliderCapsule.radius;
+					raycastInformation.normal = Math::normalize((rayOrigin + (rayDirection * distance)) - colliderSphere->center);
 					raycastInformations.push_back(raycastInformation);
+				}
+			}
+			else if (collidable.collider->getType() == ColliderShapeType::AABB) {
+				ColliderAABB* colliderAABB = static_cast<ColliderAABB*>(collidable.collider.get());
+				transform(colliderAABB, entityTransform.position, entityTransform.rotation, entityTransform.scale);
+
+				const float t1 = (colliderAABB->min.x - rayOrigin.x) * invRayDirection.x;
+				const float t2 = (colliderAABB->max.x - rayOrigin.x) * invRayDirection.x;
+				const float t3 = (colliderAABB->min.y - rayOrigin.y) * invRayDirection.y;
+				const float t4 = (colliderAABB->max.y - rayOrigin.y) * invRayDirection.y;
+				const float t5 = (colliderAABB->min.z - rayOrigin.z) * invRayDirection.z;
+				const float t6 = (colliderAABB->max.z - rayOrigin.z) * invRayDirection.z;
+
+				const float distanceMin = std::max(std::max(std::min(t1, t2), std::min(t3, t4)), std::min(t5, t6));
+				const float distanceMax = std::min(std::min(std::max(t1, t2), std::max(t3, t4)), std::max(t5, t6));
+				if ((distanceMax >= 0.0f) && (distanceMin <= distanceMax) && ((distanceMin >= tMin) && (distanceMin <= tMax))) {
+					Math::vec3 normal;
+					if (distanceMin == t1) {
+						normal = Math::vec3(-1.0f, 0.0f, 0.0f);
+					}
+					else if (distanceMin == t2) {
+						normal = Math::vec3(1.0f, 0.0f, 0.0f);
+					}
+					else if (distanceMin == t3) {
+						normal = Math::vec3(0.0f, -1.0f, 0.0f);
+					}
+					else if (distanceMin == t4) {
+						normal = Math::vec3(0.0f, 1.0f, 0.0f);
+					}
+					else if (distanceMin == t5) {
+						normal = Math::vec3(0.0f, 0.0f, -1.0f);
+					}
+					else if (distanceMin == t6) {
+						normal = Math::vec3(0.0f, 0.0f, 1.0f);
+					}
+
+					RaycastInformation raycastInformation;
+					raycastInformation.entity = entity;
+					raycastInformation.distance = distanceMin;
+					raycastInformation.normal = normal;
+					raycastInformations.push_back(raycastInformation);
+				}
+			}
+			else if (collidable.collider->getType() == ColliderShapeType::Capsule) {
+				ColliderCapsule* colliderCapsule = static_cast<ColliderCapsule*>(collidable.collider.get());
+				transform(colliderCapsule, entityTransform.position, entityTransform.rotation, entityTransform.scale);
+
+				const Math::vec3 ab = colliderCapsule->tip - colliderCapsule->base;
+				const Math::vec3 ao = rayOrigin - colliderCapsule->base;
+
+				const float abab = Math::dot(ab, ab);
+				const float aoao = Math::dot(ao, ao);
+				const float abrd = Math::dot(ab, rayDirection);
+				const float abao = Math::dot(ab, ao);
+				const float rdao = Math::dot(rayDirection, ao);
+
+				const float a = abab - (abrd * abrd);
+				float b = (abab * rdao) - (abao * abrd);
+				float c = (abab * aoao) - (abao * abao) - (colliderCapsule->radius * colliderCapsule->radius * abab);
+				float h = (b * b) - (a * c);
+				if (h >= 0.0f) {
+					float distance = (-b - std::sqrt(h)) / a;
+					const float y = abao + (distance * abrd);
+					if ((y > 0.0) && (y < abab) && ((distance >= tMin) && (distance <= tMax))) {
+						const Math::vec3 position = rayOrigin + (rayDirection * distance);
+						const Math::vec3 ap = position - colliderCapsule->base;
+
+						RaycastInformation raycastInformation;
+						raycastInformation.entity = entity;
+						raycastInformation.distance = distance;
+						raycastInformation.normal = (ap - (ab * std::clamp(Math::dot(ap, ab) / Math::dot(ab, ab), 0.0f, 1.0f))) / colliderCapsule->radius;
+						raycastInformations.push_back(raycastInformation);
+
+						continue;
+					}
+
+					const Math::vec3 co = (y <= 0.0f) ? ao : (rayOrigin - colliderCapsule->tip);
+					b = Math::dot(rayDirection, co);
+					c = Math::dot(co, co) - (colliderCapsule->radius * colliderCapsule->radius);
+
+					h = (b * b) - c;
+					distance = -b - std::sqrt(h);
+					if ((h > 0.0f) && ((distance >= tMin) && (distance <= tMax))) {
+						const Math::vec3 position = rayOrigin + (rayDirection * distance);
+						const Math::vec3 ap = position - colliderCapsule->base;
+
+						RaycastInformation raycastInformation;
+						raycastInformation.entity = entity;
+						raycastInformation.distance = distance;
+						raycastInformation.normal = (ap - (ab * std::clamp(Math::dot(ap, ab) / Math::dot(ab, ab), 0.0f, 1.0f))) / colliderCapsule->radius;
+						raycastInformations.push_back(raycastInformation);
+					}
 				}
 			}
 		}
@@ -336,39 +340,43 @@ void NtshEngn::PhysicsModule::collisionsBroadphase() {
 
 		const Transform& entityTransform = ecs->getComponent<Transform>(entity);
 
-		if (ecs->hasComponent<SphereCollidable>(entity)) {
-			ColliderSphere colliderSphere = ecs->getComponent<SphereCollidable>(entity).collider;
-			transform(&colliderSphere, entityTransform.position, entityTransform.rotation, entityTransform.scale);
+		if (ecs->hasComponent<Collidable>(entity)) {
+			Collidable collidable = ecs->getComponent<Collidable>(entity);
 
-			entityAABB.position = colliderSphere.center;
-			entityAABB.size = Math::vec3(colliderSphere.radius);
-		}
-		else if (ecs->hasComponent<AABBCollidable>(entity)) {
-			ColliderAABB colliderAABB = ecs->getComponent<AABBCollidable>(entity).collider;
-			transform(&colliderAABB, entityTransform.position, entityTransform.rotation, entityTransform.scale);
+			if (collidable.collider->getType() == ColliderShapeType::Sphere) {
+				ColliderSphere* colliderSphere = static_cast<ColliderSphere*>(collidable.collider.get());
+				transform(colliderSphere, entityTransform.position, entityTransform.rotation, entityTransform.scale);
 
-			entityAABB.position = getCenter(&colliderAABB);
-			entityAABB.size = (colliderAABB.max - colliderAABB.min) / 2.0f;
-		}
-		else if (ecs->hasComponent<CapsuleCollidable>(entity)) {
-			ColliderCapsule colliderCapsule = ecs->getComponent<CapsuleCollidable>(entity).collider;
-			transform(&colliderCapsule, entityTransform.position, entityTransform.rotation, entityTransform.scale);
+				entityAABB.position = colliderSphere->center;
+				entityAABB.size = Math::vec3(colliderSphere->radius);
+			}
+			else if (collidable.collider->getType() == ColliderShapeType::AABB) {
+				ColliderAABB* colliderAABB = static_cast<ColliderAABB*>(collidable.collider.get());
+				transform(colliderAABB, entityTransform.position, entityTransform.rotation, entityTransform.scale);
 
-			entityAABB.position = getCenter(&colliderCapsule);
+				entityAABB.position = getCenter(colliderAABB);
+				entityAABB.size = (colliderAABB->max - colliderAABB->min) / 2.0f;
+			}
+			else if (collidable.collider->getType() == ColliderShapeType::Capsule) {
+				ColliderCapsule* colliderCapsule = static_cast<ColliderCapsule*>(collidable.collider.get());
+				transform(colliderCapsule, entityTransform.position, entityTransform.rotation, entityTransform.scale);
 
-			ColliderAABB baseAABB;
-			baseAABB.min = colliderCapsule.base - Math::vec3(colliderCapsule.radius);
-			baseAABB.max = colliderCapsule.base + Math::vec3(colliderCapsule.radius);
+				entityAABB.position = getCenter(colliderCapsule);
 
-			ColliderAABB tipAABB;
-			tipAABB.min = colliderCapsule.tip - Math::vec3(colliderCapsule.radius);
-			tipAABB.max = colliderCapsule.tip + Math::vec3(colliderCapsule.radius);
+				ColliderAABB baseAABB;
+				baseAABB.min = colliderCapsule->base - Math::vec3(colliderCapsule->radius);
+				baseAABB.max = colliderCapsule->base + Math::vec3(colliderCapsule->radius);
 
-			ColliderAABB capsuleAABB;
-			capsuleAABB.min = Math::vec3(std::min(baseAABB.min.x, tipAABB.min.x), std::min(baseAABB.min.y, tipAABB.min.y), std::min(baseAABB.min.z, tipAABB.min.z));
-			capsuleAABB.max = Math::vec3(std::max(baseAABB.max.x, tipAABB.max.x), std::max(baseAABB.max.y, tipAABB.max.y), std::max(baseAABB.max.z, tipAABB.max.z));
+				ColliderAABB tipAABB;
+				tipAABB.min = colliderCapsule->tip - Math::vec3(colliderCapsule->radius);
+				tipAABB.max = colliderCapsule->tip + Math::vec3(colliderCapsule->radius);
 
-			entityAABB.size = (capsuleAABB.max - capsuleAABB.min) / 2.0f;
+				ColliderAABB capsuleAABB;
+				capsuleAABB.min = Math::vec3(std::min(baseAABB.min.x, tipAABB.min.x), std::min(baseAABB.min.y, tipAABB.min.y), std::min(baseAABB.min.z, tipAABB.min.z));
+				capsuleAABB.max = Math::vec3(std::max(baseAABB.max.x, tipAABB.max.x), std::max(baseAABB.max.y, tipAABB.max.y), std::max(baseAABB.max.z, tipAABB.max.z));
+
+				entityAABB.size = (capsuleAABB.max - capsuleAABB.min) / 2.0f;
+			}
 		}
 		else {
 			continue;
@@ -436,49 +444,17 @@ void NtshEngn::PhysicsModule::collisionsNarrowphase() {
 		const Entity entity1 = broadphaseCollision.entity1;
 		const Entity entity2 = broadphaseCollision.entity2;
 
-		ColliderShape* collider1Shape = nullptr;
-
-		ColliderSphere collider1Sphere;
-		ColliderAABB collider1AABB;
-		ColliderCapsule collider1Capsule;
-		if (ecs->hasComponent<SphereCollidable>(entity1)) {
-			collider1Sphere = ecs->getComponent<SphereCollidable>(entity1).collider;
-			collider1Shape = &collider1Sphere;
-		}
-		else if (ecs->hasComponent<AABBCollidable>(entity1)) {
-			collider1AABB = ecs->getComponent<AABBCollidable>(entity1).collider;
-			collider1Shape = &collider1AABB;
-		}
-		else if (ecs->hasComponent<CapsuleCollidable>(entity1)) {
-			collider1Capsule = ecs->getComponent<CapsuleCollidable>(entity1).collider;
-			collider1Shape = &collider1Capsule;
-		}
+		Collidable collidable1 = ecs->getComponent<Collidable>(entity1);
 
 		const Transform& entity1Transform = ecs->getComponent<Transform>(entity1);
-		transform(collider1Shape, entity1Transform.position, entity1Transform.rotation, entity1Transform.scale);
+		transform(collidable1.collider.get(), entity1Transform.position, entity1Transform.rotation, entity1Transform.scale);
 
-		ColliderShape* collider2Shape = nullptr;
-
-		ColliderSphere collider2Sphere;
-		ColliderAABB collider2AABB;
-		ColliderCapsule collider2Capsule;
-		if (ecs->hasComponent<SphereCollidable>(entity2)) {
-			collider2Sphere = ecs->getComponent<SphereCollidable>(entity2).collider;
-			collider2Shape = &collider2Sphere;
-		}
-		else if (ecs->hasComponent<AABBCollidable>(entity2)) {
-			collider2AABB = ecs->getComponent<AABBCollidable>(entity2).collider;
-			collider2Shape = &collider2AABB;
-		}
-		else if (ecs->hasComponent<CapsuleCollidable>(entity2)) {
-			collider2Capsule = ecs->getComponent<CapsuleCollidable>(entity2).collider;
-			collider2Shape = &collider2Capsule;
-		}
+		Collidable collidable2 = ecs->getComponent<Collidable>(entity2);
 
 		const Transform& entity2Transform = ecs->getComponent<Transform>(entity2);
-		transform(collider2Shape, entity2Transform.position, entity2Transform.rotation, entity2Transform.scale);
+		transform(collidable2.collider.get(), entity2Transform.position, entity2Transform.rotation, entity2Transform.scale);
 
-		IntersectionInformation intersectionInformation = intersect(collider1Shape, collider2Shape);
+		IntersectionInformation intersectionInformation = intersect(collidable1.collider.get(), collidable2.collider.get());
 		if (intersectionInformation.hasIntersected) {
 			NarrowphaseCollision narrowphaseCollision;
 			narrowphaseCollision.entity1 = entity1;
