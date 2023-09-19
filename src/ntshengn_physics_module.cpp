@@ -159,6 +159,77 @@ std::vector<NtshEngn::RaycastInformation> NtshEngn::PhysicsModule::raycast(const
 					raycastInformations.push_back(raycastInformation);
 				}
 			}
+			else if (collidable.collider->getType() == ColliderShapeType::OBB) {
+				ColliderOBB* colliderOBB = static_cast<ColliderOBB*>(collidable.collider.get());
+				transform(colliderOBB, entityTransform.position, entityTransform.rotation, entityTransform.scale);
+
+				const Math::mat4 obbRotation = Math::rotate(colliderOBB->rotation.x, Math::vec3(1.0f, 0.0f, 0.0f)) *
+					Math::rotate(colliderOBB->rotation.y, Math::vec3(0.0f, 1.0f, 0.0f)) *
+					Math::rotate(colliderOBB->rotation.z, Math::vec3(0.0f, 0.0f, 1.0f));
+
+				const Math::vec3 rayToOBB = colliderOBB->center - rayOrigin;
+
+				Math::vec3 rayDirectionProjected = Math::vec3(Math::dot(obbRotation.x, rayDirection),
+					Math::dot(obbRotation.y, rayDirection),
+					Math::dot(obbRotation.z, rayDirection));
+
+				const Math::vec3 rayToOBBProjected = Math::vec3(Math::dot(obbRotation.x, rayToOBB),
+					Math::dot(obbRotation.y, rayToOBB),
+					Math::dot(obbRotation.z, rayToOBB));
+
+				bool noIntersection = false;
+				std::array<float, 6> t = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
+				for (uint8_t i = 0; i < 3; i++) {
+					if (rayDirectionProjected[i] == 0.0f) {
+						if (((-rayToOBBProjected[i] - colliderOBB->halfExtent[i]) > 0.0f) || ((-rayToOBBProjected[i] + colliderOBB->halfExtent[i]) < 0.0f)) {
+							noIntersection = true;
+							break;
+						}
+						rayDirectionProjected[i] = 0.000001f;
+					}
+
+					t[(i * 2) + 0] = (rayToOBBProjected[i] + colliderOBB->halfExtent[i]) / rayDirectionProjected[i];
+					t[(i * 2) + 1] = (rayToOBBProjected[i] - colliderOBB->halfExtent[i]) / rayDirectionProjected[i];
+				}
+
+				if (noIntersection) {
+					continue;
+				}
+
+				const Math::mat4 obbInverseTransform = Math::transpose(Math::inverse(Math::translate(colliderOBB->center) *
+					obbRotation *
+					Math::scale(colliderOBB->halfExtent)));
+
+				const float distanceMin = std::max(std::max(std::min(t[0], t[1]), std::min(t[2], t[3])), std::min(t[4], t[5]));
+				const float distanceMax = std::min(std::min(std::max(t[0], t[1]), std::max(t[2], t[3])), std::max(t[4], t[5]));
+				if ((distanceMax >= 0.0f) && (distanceMin <= distanceMax) && ((distanceMin >= tMin) && (distanceMin <= tMax))) {
+					Math::vec3 normal;
+					if (distanceMin == t[0]) {
+						normal = Math::normalize(Math::vec3(obbInverseTransform * Math::vec4(Math::vec3(-1.0f, 0.0f, 0.0f), 0.0f)));
+					}
+					else if (distanceMin == t[1]) {
+						normal = Math::normalize(Math::vec3(obbInverseTransform * Math::vec4(Math::vec3(1.0f, 0.0f, 0.0f), 0.0f)));
+					}
+					else if (distanceMin == t[2]) {
+						normal = Math::normalize(Math::vec3(obbInverseTransform * Math::vec4(Math::vec3(0.0f, -1.0f, 0.0f), 0.0f)));
+					}
+					else if (distanceMin == t[3]) {
+						normal = Math::normalize(Math::vec3(obbInverseTransform * Math::vec4(Math::vec3(0.0f, 1.0f, 0.0f), 0.0f)));
+					}
+					else if (distanceMin == t[4]) {
+						normal = Math::normalize(Math::vec3(obbInverseTransform * Math::vec4(Math::vec3(0.0f, 0.0f, -1.0f), 0.0f)));
+					}
+					else if (distanceMin == t[5]) {
+						normal = Math::normalize(Math::vec3(obbInverseTransform * Math::vec4(Math::vec3(0.0f, 0.0f, 1.0f), 0.0f)));
+					}
+
+					RaycastInformation raycastInformation;
+					raycastInformation.entity = entity;
+					raycastInformation.distance = distanceMin;
+					raycastInformation.normal = normal;
+					raycastInformations.push_back(raycastInformation);
+				}
+			}
 			else if (collidable.collider->getType() == ColliderShapeType::Capsule) {
 				ColliderCapsule* colliderCapsule = static_cast<ColliderCapsule*>(collidable.collider.get());
 				transform(colliderCapsule, entityTransform.position, entityTransform.rotation, entityTransform.scale);
@@ -725,10 +796,109 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 }
 
 NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderAABB* aabb, const ColliderOBB* obb) {
-	NTSHENGN_UNUSED(aabb);
-	NTSHENGN_UNUSED(obb);
+	IntersectionInformation intersectionInformation;
 
-	return IntersectionInformation();
+	const Math::mat4 obbRotation = Math::rotate(obb->rotation.x, Math::vec3(1.0f, 0.0f, 0.0f)) *
+		Math::rotate(obb->rotation.y, Math::vec3(0.0f, 1.0f, 0.0f)) *
+		Math::rotate(obb->rotation.z, Math::vec3(0.0f, 0.0f, 1.0f));
+
+	const Math::mat4 obbTransform = Math::translate(obb->center) *
+		obbRotation *
+		Math::scale(obb->halfExtent);
+
+	std::array<Math::vec3, 15> axisToTest = {
+		Math::vec3(1.0f, 0.0f, 0.0f),
+		Math::vec3(0.0f, 1.0f, 0.0f),
+		Math::vec3(0.0f, 0.0f, 1.0f),
+		obbRotation.x,
+		obbRotation.y,
+		obbRotation.z,
+	};
+
+	for (uint8_t i = 0; i < 3; i++) {
+		axisToTest[6 + (i * 3) + 0] = Math::cross(axisToTest[i], axisToTest[0]);
+		axisToTest[6 + (i * 3) + 1] = Math::cross(axisToTest[i], axisToTest[1]);
+		axisToTest[6 + (i * 3) + 2] = Math::cross(axisToTest[i], axisToTest[2]);
+	}
+
+	const std::array<Math::vec3, 8> aabbCorners = {
+		Math::vec3(aabb->min.x, aabb->min.y, aabb->min.z),
+		Math::vec3(aabb->max.x, aabb->min.y, aabb->min.z),
+		Math::vec3(aabb->max.x, aabb->min.y, aabb->max.z),
+		Math::vec3(aabb->min.x, aabb->min.y, aabb->max.z),
+		Math::vec3(aabb->min.x, aabb->max.y, aabb->min.z),
+		Math::vec3(aabb->max.x, aabb->max.y, aabb->min.z),
+		Math::vec3(aabb->max.x, aabb->max.y, aabb->max.z),
+		Math::vec3(aabb->min.x, aabb->max.y, aabb->max.z)
+	};
+
+	const std::array<Math::vec3, 8> obbCorners = {
+		Math::vec3(obbTransform * Math::vec4(-1.0f, -1.0f, -1.0f, 1.0f)),
+		Math::vec3(obbTransform * Math::vec4(1.0f, -1.0f, -1.0f, 1.0f)),
+		Math::vec3(obbTransform * Math::vec4(1.0f, -1.0f, 1.0f, 1.0f)),
+		Math::vec3(obbTransform * Math::vec4(-1.0f, -1.0f, 1.0f, 1.0f)),
+		Math::vec3(obbTransform * Math::vec4(-1.0f, 1.0f, -1.0f, 1.0f)),
+		Math::vec3(obbTransform * Math::vec4(1.0f, 1.0f, -1.0f, 1.0f)),
+		Math::vec3(obbTransform * Math::vec4(1.0f, 1.0f, 1.0f, 1.0f)),
+		Math::vec3(obbTransform * Math::vec4(-1.0f, 1.0f, 1.0f, 1.0f))
+	};
+
+	float intersectionDepth = std::numeric_limits<float>::max();
+	for (uint8_t i = 0; i < 15; i++) {
+		if (Math::dot(axisToTest[i], axisToTest[i]) < 0.0001f) {
+			continue;
+		}
+		axisToTest[i] = Math::normalize(axisToTest[i]);
+
+		float aabbIntervalMin = Math::dot(axisToTest[i], aabbCorners[0]);
+		float aabbIntervalMax = aabbIntervalMin;
+
+		float obbIntervalMin = Math::dot(axisToTest[i], obbCorners[0]);
+		float obbIntervalMax = obbIntervalMin;
+
+		for (uint8_t j = 1; j < 8; j++) {
+			const float aabbProjection = Math::dot(axisToTest[i], aabbCorners[j]);
+			if (aabbProjection < aabbIntervalMin) {
+				aabbIntervalMin = aabbProjection;
+			}
+			if (aabbProjection > aabbIntervalMax) {
+				aabbIntervalMax = aabbProjection;
+			}
+
+			const float obbProjection = Math::dot(axisToTest[i], obbCorners[j]);
+			if (obbProjection < obbIntervalMin) {
+				obbIntervalMin = obbProjection;
+			}
+			if (obbProjection > obbIntervalMax) {
+				obbIntervalMax = obbProjection;
+			}
+		}
+
+		if ((obbIntervalMin > aabbIntervalMax) || (aabbIntervalMin > obbIntervalMax)) {
+			intersectionInformation.hasIntersected = false;
+
+			return intersectionInformation;
+		}
+
+		const float aabbInterval = aabbIntervalMax - aabbIntervalMin;
+		const float obbInterval = obbIntervalMax - obbIntervalMin;
+		const float intervalMin = std::min(aabbIntervalMin, obbIntervalMin);
+		const float intervalMax = std::max(aabbIntervalMax, obbIntervalMax);
+		const float interval = intervalMax - intervalMin;
+		const float depth = (aabbInterval + obbInterval) - interval;
+
+		if (depth < intersectionDepth) {
+			float flipNormal = (obbIntervalMin < aabbIntervalMin) ? -1.0f : 1.0f;
+
+			intersectionInformation.hasIntersected = true;
+			intersectionInformation.intersectionNormal = axisToTest[i] * flipNormal;
+			intersectionInformation.intersectionDepth = depth;
+
+			intersectionDepth = depth;
+		}
+	}
+
+	return intersectionInformation;
 }
 
 NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderAABB* aabb, const ColliderCapsule* capsule) {
@@ -746,17 +916,129 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 }
 
 NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderOBB* obb1, const ColliderOBB* obb2) {
-	NTSHENGN_UNUSED(obb1);
-	NTSHENGN_UNUSED(obb2);
+	IntersectionInformation intersectionInformation;
 
-	return IntersectionInformation();
+	const Math::mat4 obb1Rotation = Math::rotate(obb1->rotation.x, Math::vec3(1.0f, 0.0f, 0.0f)) *
+		Math::rotate(obb1->rotation.y, Math::vec3(0.0f, 1.0f, 0.0f)) *
+		Math::rotate(obb1->rotation.z, Math::vec3(0.0f, 0.0f, 1.0f));
+
+	const Math::mat4 obb1Transform = Math::translate(obb1->center) *
+		obb1Rotation *
+		Math::scale(obb1->halfExtent);
+
+	const Math::mat4 obb2Rotation = Math::rotate(obb2->rotation.x, Math::vec3(1.0f, 0.0f, 0.0f)) *
+		Math::rotate(obb2->rotation.y, Math::vec3(0.0f, 1.0f, 0.0f)) *
+		Math::rotate(obb2->rotation.z, Math::vec3(0.0f, 0.0f, 1.0f));
+
+	const Math::mat4 obb2Transform = Math::translate(obb2->center) *
+		obb2Rotation *
+		Math::scale(obb2->halfExtent);
+
+	std::array<Math::vec3, 15> axisToTest = {
+		obb1Rotation.x,
+		obb1Rotation.y,
+		obb1Rotation.z,
+		obb2Rotation.x,
+		obb2Rotation.y,
+		obb2Rotation.z,
+	};
+
+	for (uint8_t i = 0; i < 3; i++) {
+		axisToTest[6 + (i * 3) + 0] = Math::cross(axisToTest[i], axisToTest[0]);
+		axisToTest[6 + (i * 3) + 1] = Math::cross(axisToTest[i], axisToTest[1]);
+		axisToTest[6 + (i * 3) + 2] = Math::cross(axisToTest[i], axisToTest[2]);
+	}
+
+	const std::array<Math::vec3, 8> obb1Corners = {
+		Math::vec3(obb1Transform * Math::vec4(-1.0f, -1.0f, -1.0f, 1.0f)),
+		Math::vec3(obb1Transform * Math::vec4(1.0f, -1.0f, -1.0f, 1.0f)),
+		Math::vec3(obb1Transform * Math::vec4(1.0f, -1.0f, 1.0f, 1.0f)),
+		Math::vec3(obb1Transform * Math::vec4(-1.0f, -1.0f, 1.0f, 1.0f)),
+		Math::vec3(obb1Transform * Math::vec4(-1.0f, 1.0f, -1.0f, 1.0f)),
+		Math::vec3(obb1Transform * Math::vec4(1.0f, 1.0f, -1.0f, 1.0f)),
+		Math::vec3(obb1Transform * Math::vec4(1.0f, 1.0f, 1.0f, 1.0f)),
+		Math::vec3(obb1Transform * Math::vec4(-1.0f, 1.0f, 1.0f, 1.0f))
+	};
+	
+	const std::array<Math::vec3, 8> obb2Corners = {
+		Math::vec3(obb2Transform * Math::vec4(-1.0f, -1.0f, -1.0f, 1.0f)),
+		Math::vec3(obb2Transform * Math::vec4(1.0f, -1.0f, -1.0f, 1.0f)),
+		Math::vec3(obb2Transform * Math::vec4(1.0f, -1.0f, 1.0f, 1.0f)),
+		Math::vec3(obb2Transform * Math::vec4(-1.0f, -1.0f, 1.0f, 1.0f)),
+		Math::vec3(obb2Transform * Math::vec4(-1.0f, 1.0f, -1.0f, 1.0f)),
+		Math::vec3(obb2Transform * Math::vec4(1.0f, 1.0f, -1.0f, 1.0f)),
+		Math::vec3(obb2Transform * Math::vec4(1.0f, 1.0f, 1.0f, 1.0f)),
+		Math::vec3(obb2Transform * Math::vec4(-1.0f, 1.0f, 1.0f, 1.0f))
+	};
+
+	float intersectionDepth = std::numeric_limits<float>::max();
+	for (uint8_t i = 0; i < 15; i++) {
+		if (Math::dot(axisToTest[i], axisToTest[i]) < 0.0001f) {
+			continue;
+		}
+		axisToTest[i] = Math::normalize(axisToTest[i]);
+
+		float obb1IntervalMin = Math::dot(axisToTest[i], obb1Corners[0]);
+		float obb1IntervalMax = obb1IntervalMin;
+
+		float obb2IntervalMin = Math::dot(axisToTest[i], obb2Corners[0]);
+		float obb2IntervalMax = obb2IntervalMin;
+
+		for (uint8_t j = 1; j < 8; j++) {
+			const float obb1Projection = Math::dot(axisToTest[i], obb1Corners[j]);
+			if (obb1Projection < obb1IntervalMin) {
+				obb1IntervalMin = obb1Projection;
+			}
+			if (obb1Projection > obb1IntervalMax) {
+				obb1IntervalMax = obb1Projection;
+			}
+
+			const float obb2Projection = Math::dot(axisToTest[i], obb2Corners[j]);
+			if (obb2Projection < obb2IntervalMin) {
+				obb2IntervalMin = obb2Projection;
+			}
+			if (obb2Projection > obb2IntervalMax) {
+				obb2IntervalMax = obb2Projection;
+			}
+		}
+
+		if ((obb2IntervalMin > obb1IntervalMax) || (obb1IntervalMin > obb2IntervalMax)) {
+			intersectionInformation.hasIntersected = false;
+
+			return intersectionInformation;
+		}
+
+		const float obb1Interval = obb1IntervalMax - obb1IntervalMin;
+		const float obb2Interval = obb2IntervalMax - obb2IntervalMin;
+		const float intervalMin = std::min(obb1IntervalMin, obb2IntervalMin);
+		const float intervalMax = std::max(obb1IntervalMax, obb2IntervalMax);
+		const float interval = intervalMax - intervalMin;
+		const float depth = (obb1Interval + obb2Interval) - interval;
+
+		if (depth < intersectionDepth) {
+			float flipNormal = (obb2IntervalMin < obb1IntervalMin) ? -1.0f : 1.0f;
+
+			intersectionInformation.hasIntersected = true;
+			intersectionInformation.intersectionNormal = axisToTest[i] * flipNormal;
+			intersectionInformation.intersectionDepth = depth;
+
+			intersectionDepth = depth;
+		}
+	}
+
+	return intersectionInformation;
 }
 
 NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderOBB* obb, const ColliderCapsule* capsule) {
-	NTSHENGN_UNUSED(obb);
-	NTSHENGN_UNUSED(capsule);
+	IntersectionInformation intersectionInformation;
 
-	return IntersectionInformation();
+	const Math::vec3 closestPointOnCapsule = closestPointOnSegment(obb->center, capsule->base, capsule->tip);
+
+	ColliderSphere sphereFromCapsule;
+	sphereFromCapsule.center = closestPointOnCapsule;
+	sphereFromCapsule.radius = capsule->radius;
+
+	return intersect(obb, &sphereFromCapsule);
 }
 
 NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderCapsule* capsule1, const ColliderCapsule* capsule2) {
