@@ -12,19 +12,25 @@ void NtshEngn::PhysicsModule::init() {
 }
 
 void NtshEngn::PhysicsModule::update(double dt) {
-	if (dt > (1000.0 / 60.0)) {
-		dt = 1000.0 / 60.0;
+	timeAccumulator += dt;
+
+	uint32_t iterations = 0;
+	while ((timeAccumulator >= maxDeltaTime) && (iterations < maxIterations)) {
+		const float dtSeconds = static_cast<float>(maxDeltaTime / 1000.0);
+
+		// Euler integrator
+		eulerIntegrator(dtSeconds);
+
+		// Collisions detection
+		collisionsDetection();
+
+		// Collisions response
+		collisionsResponse();
+
+		timeAccumulator -= maxDeltaTime;
+
+		iterations++;
 	}
-	const float dtSeconds = static_cast<float>(dt / 1000.0);
-
-	// Euler integrator
-	eulerIntegrator(dtSeconds);
-
-	// Collisions detection
-	collisionsDetection();
-
-	// Collisions response
-	collisionsResponse();
 }
 
 void NtshEngn::PhysicsModule::destroy() {
