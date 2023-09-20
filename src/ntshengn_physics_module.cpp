@@ -812,7 +812,7 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 		Math::vec3(0.0f, 0.0f, 1.0f),
 		obbRotation.x,
 		obbRotation.y,
-		obbRotation.z,
+		obbRotation.z
 	};
 
 	for (uint8_t i = 0; i < 3; i++) {
@@ -843,7 +843,7 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 		Math::vec3(obbTransform * Math::vec4(-1.0f, 1.0f, 1.0f, 1.0f))
 	};
 
-	float intersectionDepth = std::numeric_limits<float>::max();
+	intersectionInformation.intersectionDepth = std::numeric_limits<float>::max();
 	for (uint8_t i = 0; i < 15; i++) {
 		if (Math::dot(axisToTest[i], axisToTest[i]) < 0.0001f) {
 			continue;
@@ -857,6 +857,11 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 		float obbIntervalMax = obbIntervalMin;
 
 		for (uint8_t j = 1; j < 8; j++) {
+			if (Math::dot(axisToTest[i], axisToTest[i]) < 0.0001f) {
+				continue;
+			}
+			axisToTest[i] = Math::normalize(axisToTest[i]);
+
 			const float aabbProjection = Math::dot(axisToTest[i], aabbCorners[j]);
 			if (aabbProjection < aabbIntervalMin) {
 				aabbIntervalMin = aabbProjection;
@@ -887,14 +892,12 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 		const float interval = intervalMax - intervalMin;
 		const float depth = (aabbInterval + obbInterval) - interval;
 
-		if (depth < intersectionDepth) {
+		if (depth < intersectionInformation.intersectionDepth) {
 			float flipNormal = (obbIntervalMin < aabbIntervalMin) ? -1.0f : 1.0f;
 
 			intersectionInformation.hasIntersected = true;
 			intersectionInformation.intersectionNormal = axisToTest[i] * flipNormal;
 			intersectionInformation.intersectionDepth = depth;
-
-			intersectionDepth = depth;
 		}
 	}
 
@@ -940,7 +943,7 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 		obb1Rotation.z,
 		obb2Rotation.x,
 		obb2Rotation.y,
-		obb2Rotation.z,
+		obb2Rotation.z
 	};
 
 	for (uint8_t i = 0; i < 3; i++) {
@@ -971,7 +974,7 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 		Math::vec3(obb2Transform * Math::vec4(-1.0f, 1.0f, 1.0f, 1.0f))
 	};
 
-	float intersectionDepth = std::numeric_limits<float>::max();
+	intersectionInformation.intersectionDepth = std::numeric_limits<float>::max();
 	for (uint8_t i = 0; i < 15; i++) {
 		if (Math::dot(axisToTest[i], axisToTest[i]) < 0.0001f) {
 			continue;
@@ -1015,14 +1018,12 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 		const float interval = intervalMax - intervalMin;
 		const float depth = (obb1Interval + obb2Interval) - interval;
 
-		if (depth < intersectionDepth) {
+		if (depth < intersectionInformation.intersectionDepth) {
 			float flipNormal = (obb2IntervalMin < obb1IntervalMin) ? -1.0f : 1.0f;
 
 			intersectionInformation.hasIntersected = true;
 			intersectionInformation.intersectionNormal = axisToTest[i] * flipNormal;
 			intersectionInformation.intersectionDepth = depth;
-
-			intersectionDepth = depth;
 		}
 	}
 
