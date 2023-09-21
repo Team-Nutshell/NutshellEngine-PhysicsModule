@@ -896,10 +896,15 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 		const float intervalMin = std::min(aabbIntervalMin, obbIntervalMin);
 		const float intervalMax = std::max(aabbIntervalMax, obbIntervalMax);
 		const float interval = intervalMax - intervalMin;
-		const float depth = (aabbInterval + obbInterval) - interval;
+		float depth = (aabbInterval + obbInterval) - interval;
+
+		if (((aabbIntervalMin < obbIntervalMin) && (aabbIntervalMax > obbIntervalMax)) ||
+			((obbIntervalMin < aabbIntervalMin) && (obbIntervalMax > aabbIntervalMax))) {
+			depth += std::min(std::abs(aabbIntervalMin - obbIntervalMin), std::abs(aabbIntervalMax - obbIntervalMax));
+		}
 
 		if (depth < intersectionInformation.intersectionDepth) {
-			float flipNormal = (obbIntervalMin < aabbIntervalMin) ? -1.0f : 1.0f;
+			const float flipNormal = (Math::dot(obb->center - getCenter(aabb), axisToTest[i]) < 0.0f) ? -1.0f : 1.0f;
 
 			intersectionInformation.hasIntersected = true;
 			intersectionInformation.intersectionNormal = axisToTest[i] * flipNormal;
@@ -1022,11 +1027,15 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 		const float intervalMin = std::min(obb1IntervalMin, obb2IntervalMin);
 		const float intervalMax = std::max(obb1IntervalMax, obb2IntervalMax);
 		const float interval = intervalMax - intervalMin;
-		const float depth = (obb1Interval + obb2Interval) - interval;
+		float depth = (obb1Interval + obb2Interval) - interval;
+
+		if (((obb1IntervalMin < obb2IntervalMin) && (obb1IntervalMax > obb2IntervalMax)) ||
+			((obb2IntervalMin < obb1IntervalMin) && (obb2IntervalMax > obb1IntervalMax))) {
+			depth += std::min(std::abs(obb1IntervalMin - obb2IntervalMin), std::abs(obb1IntervalMax - obb2IntervalMax));
+		}
 
 		if (depth < intersectionInformation.intersectionDepth) {
-			float flipNormal = (obb2IntervalMin < obb1IntervalMin) ? -1.0f : 1.0f;
-
+			const float flipNormal = (Math::dot(obb2->center - obb1->center, axisToTest[i]) < 0.0f) ? -1.0f : 1.0f;
 			intersectionInformation.hasIntersected = true;
 			intersectionInformation.intersectionNormal = axisToTest[i] * flipNormal;
 			intersectionInformation.intersectionDepth = depth;
