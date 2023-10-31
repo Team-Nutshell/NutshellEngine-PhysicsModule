@@ -751,8 +751,6 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 }
 
 NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderSphere* sphere, const ColliderCapsule* capsule) {
-	IntersectionInformation intersectionInformation;
-
 	ColliderSphere sphereFromCapsule;
 	sphereFromCapsule.center = closestPointOnSegment(sphere->center, capsule->base, capsule->tip);
 	sphereFromCapsule.radius = capsule->radius;
@@ -916,8 +914,6 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 }
 
 NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderAABB* aabb, const ColliderCapsule* capsule) {
-	IntersectionInformation intersectionInformation;
-
 	const Math::vec3 aabbCenter = getCenter(aabb);
 
 	const Math::vec3 closestPointOnCapsule = closestPointOnSegment(aabbCenter, capsule->base, capsule->tip);
@@ -1046,8 +1042,6 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 }
 
 NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderOBB* obb, const ColliderCapsule* capsule) {
-	IntersectionInformation intersectionInformation;
-
 	const Math::vec3 closestPointOnCapsule = closestPointOnSegment(obb->center, capsule->base, capsule->tip);
 
 	ColliderSphere sphereFromCapsule;
@@ -1058,8 +1052,6 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 }
 
 NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderCapsule* capsule1, const ColliderCapsule* capsule2) {
-	IntersectionInformation intersectionInformation;
-
 	const std::pair<Math::vec3, Math::vec3> bestOnCapsules = closestPointSegmentSegment(capsule1->base, capsule1->tip, capsule2->base, capsule2->tip);
 
 	ColliderSphere sphereFromCapsule1;
