@@ -611,7 +611,7 @@ void NtshEngn::PhysicsModule::collisionsNarrowphase() {
 			NarrowphaseCollision narrowphaseCollision;
 			narrowphaseCollision.entity1 = entity1;
 			narrowphaseCollision.entity2 = entity2;
-			narrowphaseCollision.intersectionNormal = Math::vec3(intersectionInformation.intersectionNormal.data());
+			narrowphaseCollision.intersectionNormal = intersectionInformation.intersectionNormal;
 			narrowphaseCollision.intersectionDepth = intersectionInformation.intersectionDepth;
 
 			std::unique_lock<std::mutex> lock(mutex);
