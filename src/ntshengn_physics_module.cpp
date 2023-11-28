@@ -12,11 +12,11 @@ void NtshEngn::PhysicsModule::init() {
 }
 
 void NtshEngn::PhysicsModule::update(double dt) {
-	timeAccumulator += dt;
+	m_timeAccumulator += dt;
 
 	uint32_t iterations = 0;
-	while ((timeAccumulator >= maxDeltaTime) && (iterations < maxIterations)) {
-		const float dtSeconds = static_cast<float>(maxDeltaTime / 1000.0);
+	while ((m_timeAccumulator >= m_maxDeltaTime) && (iterations < maxIterations)) {
+		const float dtSeconds = static_cast<float>(m_maxDeltaTime / 1000.0);
 
 		// Euler integrator
 		eulerIntegrator(dtSeconds);
@@ -27,7 +27,7 @@ void NtshEngn::PhysicsModule::update(double dt) {
 		// Collisions response
 		collisionsResponse();
 
-		timeAccumulator -= maxDeltaTime;
+		m_timeAccumulator -= m_maxDeltaTime;
 
 		iterations++;
 	}

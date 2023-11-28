@@ -162,9 +162,9 @@ namespace NtshEngn {
 		std::pair<Math::vec3, Math::vec3> closestPointSegmentSegment(const Math::vec3& segmentA1, const Math::vec3& segmentA2, const Math::vec3& segmentB1, const Math::vec3& segmentB2);
 
 	private:
-		const uint32_t maxIterations = 60;
-		const double maxDeltaTime = 1000.0 / 60.0;
-		double timeAccumulator = 0.0;
+		const uint32_t m_maxIterations = 60;
+		const double m_maxDeltaTime = 1000.0 / 60.0;
+		double m_timeAccumulator = 0.0;
 
 		const Math::vec3 m_gravity = Math::vec3(0.0f, -9.81f, 0.0f);
 
