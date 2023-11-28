@@ -15,7 +15,7 @@ void NtshEngn::PhysicsModule::update(double dt) {
 	m_timeAccumulator += dt;
 
 	uint32_t iterations = 0;
-	while ((m_timeAccumulator >= m_maxDeltaTime) && (iterations < maxIterations)) {
+	while ((m_timeAccumulator >= m_maxDeltaTime) && (iterations < m_maxIterations)) {
 		const float dtSeconds = static_cast<float>(m_maxDeltaTime / 1000.0);
 
 		// Euler integrator
