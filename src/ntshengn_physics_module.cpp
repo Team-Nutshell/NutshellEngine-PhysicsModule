@@ -807,8 +807,6 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 				intersectionInformation.intersectionPoints.push_back(intersectionPoints[i]);
 			}
 		}
-
-
 	}
 
 	return intersectionInformation;
