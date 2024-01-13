@@ -289,19 +289,21 @@ void NtshEngn::PhysicsModule::collisionsDetection() {
 }
 
 void NtshEngn::PhysicsModule::collisionsResponse() {
+	std::unordered_map<Entity, ObjectState> objectStates;
+
 	for (const NarrowphaseCollision& collision : m_narrowphaseCollisions) {
 		const Rigidbody& entity1Rigidbody = ecs->getComponent<Rigidbody>(collision.entity1);
-		RigidbodyState& entity1RigidbodyState = m_rigidbodyStates[collision.entity1];
+		const RigidbodyState& entity1RigidbodyState = m_rigidbodyStates[collision.entity1];
 
-		Transform& entity1Transform = ecs->getComponent<Transform>(collision.entity1);
+		const Transform& entity1Transform = ecs->getComponent<Transform>(collision.entity1);
 		Collidable entity1Collidable = ecs->getComponent<Collidable>(collision.entity1);
 
 		transform(entity1Collidable.collider.get(), entity1Transform.position, entity1Transform.rotation, entity1Transform.scale);
 
 		const Rigidbody& entity2Rigidbody = ecs->getComponent<Rigidbody>(collision.entity2);
-		RigidbodyState& entity2RigidbodyState = m_rigidbodyStates[collision.entity2];
+		const RigidbodyState& entity2RigidbodyState = m_rigidbodyStates[collision.entity2];
 
-		Transform& entity2Transform = ecs->getComponent<Transform>(collision.entity2);
+		const Transform& entity2Transform = ecs->getComponent<Transform>(collision.entity2);
 		Collidable entity2Collidable = ecs->getComponent<Collidable>(collision.entity2);
 
 		transform(entity2Collidable.collider.get(), entity2Transform.position, entity2Transform.rotation, entity2Transform.scale);
@@ -319,11 +321,13 @@ void NtshEngn::PhysicsModule::collisionsResponse() {
 			continue;
 		}
 
-		Math::vec3 entity1LinearVelocity = Math::vec3(0.0f, 0.0f, 0.0f);
-		Math::vec3 entity1AngularVelocity = Math::vec3(0.0f, 0.0f, 0.0f);
-		Math::vec3 entity2LinearVelocity = Math::vec3(0.0f, 0.0f, 0.0f);
-		Math::vec3 entity2AngularVelocity = Math::vec3(0.0f, 0.0f, 0.0f);
+		const float intersectionPointsAsFloat = static_cast<float>(collision.intersectionPoints.size());
 		for (size_t i = 0; i < collision.intersectionPoints.size(); i++) {
+			Math::vec3 entity1LinearVelocityDelta = Math::vec3(0.0f, 0.0f, 0.0f);
+			Math::vec3 entity1AngularVelocityDelta = Math::vec3(0.0f, 0.0f, 0.0f);
+			Math::vec3 entity2LinearVelocityDelta = Math::vec3(0.0f, 0.0f, 0.0f);
+			Math::vec3 entity2AngularVelocityDelta = Math::vec3(0.0f, 0.0f, 0.0f);
+
 			// Impulse
 			const Math::vec3 relativeIntersectionPoint1 = collision.intersectionPoints[i] - getCenter(entity1Collidable.collider.get());
 			const Math::vec3 relativeIntersectionPoint2 = collision.intersectionPoints[i] - getCenter(entity2Collidable.collider.get());
@@ -348,20 +352,26 @@ void NtshEngn::PhysicsModule::collisionsResponse() {
 			const Math::vec3 impulse = j * collision.intersectionNormal;
 
 			if (!entity1Rigidbody.isStatic) {
-				entity1LinearVelocity -= (invMass1 * impulse) / static_cast<float>(collision.intersectionPoints.size());
-				entity1AngularVelocity -= (invInertia1 * Math::cross(relativeIntersectionPoint1, impulse)) / static_cast<float>(collision.intersectionPoints.size());
+				entity1LinearVelocityDelta -= (invMass1 * impulse) / intersectionPointsAsFloat;
+				entity1AngularVelocityDelta -= (invInertia1 * Math::cross(relativeIntersectionPoint1, impulse)) / intersectionPointsAsFloat;
+
+				objectStates[collision.entity1].linearVelocity += entity1LinearVelocityDelta;
+				objectStates[collision.entity1].angularVelocity += entity1AngularVelocityDelta;
 			}
 
 			if (!entity2Rigidbody.isStatic) {
-				entity2LinearVelocity += (invMass2 * impulse) / static_cast<float>(collision.intersectionPoints.size());
-				entity2AngularVelocity += (invInertia2 * Math::cross(relativeIntersectionPoint2, impulse)) / static_cast<float>(collision.intersectionPoints.size());
+				entity2LinearVelocityDelta += (invMass2 * impulse) / intersectionPointsAsFloat;
+				entity2AngularVelocityDelta += (invInertia2 * Math::cross(relativeIntersectionPoint2, impulse)) / intersectionPointsAsFloat;
+
+				objectStates[collision.entity2].linearVelocity += entity2LinearVelocityDelta;
+				objectStates[collision.entity2].angularVelocity += entity2AngularVelocityDelta;
 			}
 
 			// Friction
-			angularVelocity1 = Math::cross(entity1RigidbodyState.angularVelocity, relativeIntersectionPoint1);
-			angularVelocity2 = Math::cross(entity2RigidbodyState.angularVelocity, relativeIntersectionPoint2);
-			fullVelocity1 = entity1RigidbodyState.linearVelocity + angularVelocity1;
-			fullVelocity2 = entity2RigidbodyState.linearVelocity + angularVelocity2;
+			angularVelocity1 = Math::cross(entity1RigidbodyState.angularVelocity + entity1AngularVelocityDelta, relativeIntersectionPoint1);
+			angularVelocity2 = Math::cross(entity2RigidbodyState.angularVelocity + entity2AngularVelocityDelta, relativeIntersectionPoint2);
+			fullVelocity1 = (entity1RigidbodyState.linearVelocity + entity1LinearVelocityDelta) + angularVelocity1;
+			fullVelocity2 = (entity2RigidbodyState.linearVelocity + entity2LinearVelocityDelta) + angularVelocity2;
 
 			relativeVelocity = fullVelocity2 - fullVelocity1;
 			impulseForce = Math::dot(relativeVelocity, collision.intersectionNormal);
@@ -386,30 +396,36 @@ void NtshEngn::PhysicsModule::collisionsResponse() {
 			}
 
 			if (!entity1Rigidbody.isStatic) {
-				entity1LinearVelocity -= (invMass1 * friction) / static_cast<float>(collision.intersectionPoints.size());
-				entity1AngularVelocity -= (invInertia1 * Math::cross(relativeIntersectionPoint1, friction)) / static_cast<float>(collision.intersectionPoints.size());
+				objectStates[collision.entity1].linearVelocity -= (invMass1 * friction) / intersectionPointsAsFloat;
+				objectStates[collision.entity1].angularVelocity -= (invInertia1 * Math::cross(relativeIntersectionPoint1, friction)) / intersectionPointsAsFloat;
 			}
 
 			if (!entity2Rigidbody.isStatic) {
-				entity2LinearVelocity += (invMass2 * friction) / static_cast<float>(collision.intersectionPoints.size());
-				entity2AngularVelocity += (invInertia2 * Math::cross(relativeIntersectionPoint2, friction)) / static_cast<float>(collision.intersectionPoints.size());
+				objectStates[collision.entity2].linearVelocity += (invMass2 * friction) / intersectionPointsAsFloat;
+				objectStates[collision.entity2].angularVelocity += (invInertia2 * Math::cross(relativeIntersectionPoint2, friction)) / intersectionPointsAsFloat;
 			}
 		}
-		entity1RigidbodyState.linearVelocity += entity1LinearVelocity;
-		entity1RigidbodyState.angularVelocity += entity1AngularVelocity;
-		entity2RigidbodyState.linearVelocity += entity2LinearVelocity;
-		entity2RigidbodyState.angularVelocity += entity2AngularVelocity;
 
 		// Position correction
 		const Math::vec3 correction = std::max(collision.intersectionDepth, 0.0f) * collision.intersectionNormal;
 
 		if (!entity1Rigidbody.isStatic) {
-			entity1Transform.position -= correction;
+			objectStates[collision.entity1].position -= correction;
 		}
 
 		if (!entity2Rigidbody.isStatic) {
-			entity2Transform.position += correction;
+			objectStates[collision.entity2].position += correction;
 		}
+	}
+
+	// Apply changes in velocities and position once all collisions are resolved
+	for (const std::pair<Entity, ObjectState>& objectState : objectStates) {
+		Transform& entityTransform = ecs->getComponent<Transform>(objectState.first);
+		RigidbodyState& entityRigidbodyState = m_rigidbodyStates[objectState.first];
+
+		entityTransform.position += objectState.second.position;
+		entityRigidbodyState.linearVelocity += objectState.second.linearVelocity;
+		entityRigidbodyState.angularVelocity += objectState.second.angularVelocity;
 	}
 }
 
@@ -766,10 +782,33 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 
 	if (intersectionInformation.hasIntersected) {
 		std::vector<Math::vec3> intersectionPoints = clipEdgesToBox(box1Edges, box2, box2Rotation);
-		intersectionInformation.intersectionPoints.insert(intersectionInformation.intersectionPoints.end(), intersectionPoints.begin(), intersectionPoints.end());
+		for (size_t i = 0; i < intersectionPoints.size(); i++) {
+			bool foundPoint = false;
+			for (size_t j = 0; j < intersectionInformation.intersectionPoints.size(); j++) {
+				if (intersectionPoints[i] == intersectionInformation.intersectionPoints[j]) {
+					foundPoint = true;
+				}
+			}
+
+			if (!foundPoint) {
+				intersectionInformation.intersectionPoints.push_back(intersectionPoints[i]);
+			}
+		}
 
 		intersectionPoints = clipEdgesToBox(box2Edges, box1, box1Rotation);
-		intersectionInformation.intersectionPoints.insert(intersectionInformation.intersectionPoints.end(), intersectionPoints.begin(), intersectionPoints.end());
+		for (size_t i = 0; i < intersectionPoints.size(); i++) {
+			bool foundPoint = false;
+			for (size_t j = 0; j < intersectionInformation.intersectionPoints.size(); j++) {
+				if (intersectionPoints[i] == intersectionInformation.intersectionPoints[j]) {
+					foundPoint = true;
+				}
+			}
+			if (!foundPoint) {
+				intersectionInformation.intersectionPoints.push_back(intersectionPoints[i]);
+			}
+		}
+
+
 	}
 
 	return intersectionInformation;
@@ -886,7 +925,9 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::gjk(const ColliderSha
 
 	direction = supp * -1.0f;
 
-	while (true) {
+	uint16_t iterations = 0;
+	const uint16_t maxIterations = 65535;
+	while (iterations < maxIterations) {
 		supp = support(shape1, shape2, direction);
 
 		if (Math::dot(supp, direction) <= 0.0f) { // No intersection
@@ -907,9 +948,13 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::gjk(const ColliderSha
 
 			return intersectionInformation;
 		}
+
+		iterations++;
 	}
 
-	NTSHENGN_MODULE_ERROR("Reached impossible path in GJK.", Result::ModuleError);
+	intersectionInformation.hasIntersected = false;
+
+	return intersectionInformation;
 }
 
 bool NtshEngn::PhysicsModule::simplexContainsOrigin(GJKSimplex& simplex, Math::vec3& direction) {

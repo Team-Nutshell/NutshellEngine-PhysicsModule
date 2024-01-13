@@ -14,6 +14,12 @@ struct RigidbodyState {
 	NtshEngn::Math::vec3 angularVelocity = NtshEngn::Math::vec3(0.0f, 0.0f, 0.0f);
 };
 
+struct ObjectState {
+	NtshEngn::Math::vec3 position = NtshEngn::Math::vec3(0.0f, 0.0f, 0.0f);
+	NtshEngn::Math::vec3 linearVelocity = NtshEngn::Math::vec3(0.0f, 0.0f, 0.0f);
+	NtshEngn::Math::vec3 angularVelocity = NtshEngn::Math::vec3(0.0f, 0.0f, 0.0f);
+};
+
 struct AABB {
 	NtshEngn::Math::vec3 position;
 	NtshEngn::Math::vec3 size;
