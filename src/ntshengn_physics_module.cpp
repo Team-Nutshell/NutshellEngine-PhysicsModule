@@ -289,7 +289,7 @@ void NtshEngn::PhysicsModule::collisionsDetection() {
 }
 
 void NtshEngn::PhysicsModule::collisionsResponse() {
-	std::unordered_map<Entity, ObjectState> objectStates;
+	std::unordered_map<Entity, ObjectDuringCollisionResponseState> objectStates;
 
 	for (const NarrowphaseCollision& collision : m_narrowphaseCollisions) {
 		const Rigidbody& entity1Rigidbody = ecs->getComponent<Rigidbody>(collision.entity1);
@@ -419,7 +419,7 @@ void NtshEngn::PhysicsModule::collisionsResponse() {
 	}
 
 	// Apply changes in velocities and position once all collisions are resolved
-	for (const std::pair<Entity, ObjectState>& objectState : objectStates) {
+	for (const std::pair<Entity, ObjectDuringCollisionResponseState>& objectState : objectStates) {
 		Transform& entityTransform = ecs->getComponent<Transform>(objectState.first);
 		RigidbodyState& entityRigidbodyState = m_rigidbodyStates[objectState.first];
 
