@@ -789,7 +789,6 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 					foundPoint = true;
 				}
 			}
-
 			if (!foundPoint) {
 				intersectionInformation.intersectionPoints.push_back(intersectionPoints[i]);
 			}
