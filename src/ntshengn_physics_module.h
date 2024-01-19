@@ -91,16 +91,6 @@ namespace NtshEngn {
 		Math::vec3 getCenter(const ColliderBox* box);
 		Math::vec3 getCenter(const ColliderCapsule* capsule);
 
-		Math::vec3 support(const ColliderShape* shape1, const ColliderShape* shape2, const Math::vec3& direction);
-
-		Math::vec3 getFarthestPointInDirection(const ColliderShape* shape, const Math::vec3& direction);
-		Math::vec3 getFarthestPointInDirection(const ColliderSphere* sphere, const Math::vec3& direction);
-		Math::vec3 getFarthestPointInDirection(const ColliderBox* box, const Math::vec3& direction);
-		Math::vec3 getFarthestPointInDirection(const ColliderCapsule* capsule, const Math::vec3& direction);
-
-		std::pair<std::vector<Math::vec4>, size_t> getPolytopeNormals(const std::vector<Math::vec3>& polytope, const std::vector<size_t>& faces);
-		void addIfUniqueEdge(std::vector<std::pair<size_t, size_t>>& edges, const std::vector<size_t>& polytopeIndices, size_t a, size_t b);
-
 		void transform(ColliderShape* shape, const Math::vec3& translation, const Math::vec3& rotation, const Math::vec3& scale);
 		void transform(ColliderSphere* sphere, const Math::vec3& translation, const Math::vec3& scale);
 		void transform(ColliderBox* box, const Math::vec3& translation, const Math::vec3& rotation, const Math::vec3& scale);
