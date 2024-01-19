@@ -852,10 +852,8 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 }
 
 NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderBox* box, const ColliderCapsule* capsule) {
-	const Math::vec3 closestPointOnCapsule = closestPointOnSegment(box->center, capsule->base, capsule->tip);
-
 	ColliderSphere sphereFromCapsule;
-	sphereFromCapsule.center = closestPointOnCapsule;
+	sphereFromCapsule.center = closestPointOnSegment(box->center, capsule->base, capsule->tip);
 	sphereFromCapsule.radius = capsule->radius;
 
 	return intersect(box, &sphereFromCapsule);
