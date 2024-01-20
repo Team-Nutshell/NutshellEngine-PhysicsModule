@@ -305,8 +305,8 @@ void NtshEngn::PhysicsModule::collisionsResponse() {
 
 		// Position correction
 		Math::vec3 correction = std::max(collision.intersectionDepth, 0.0f) * collision.intersectionNormal;
-		Math::vec3 entity1CorrectedPosition = entity1Transform.position;
-		Math::vec3 entity2CorrectedPosition = entity2Transform.position;
+		Math::vec3 entity1CorrectedPositionDelta = 0.0f;
+		Math::vec3 entity2CorrectedPositionDelta = 0.0f;
 
 		if (!entity1Rigidbody.isStatic && !entity2Rigidbody.isStatic) {
 			// If no entity is static, correction is shared between both of them
@@ -314,20 +314,20 @@ void NtshEngn::PhysicsModule::collisionsResponse() {
 		}
 
 		if (!entity1Rigidbody.isStatic) {
-			entity1CorrectedPosition -= correction;
+			entity1CorrectedPositionDelta -= correction;
 
-			objectStates[collision.entity1].position -= correction;
+			objectStates[collision.entity1].position += entity1CorrectedPositionDelta;
 		}
 
 		if (!entity2Rigidbody.isStatic) {
-			entity2CorrectedPosition += correction;
+			entity2CorrectedPositionDelta += correction;
 
-			objectStates[collision.entity2].position += correction;
+			objectStates[collision.entity2].position += entity2CorrectedPositionDelta;
 		}
 
 		// Transform collider according to corrected position
-		transform(entity1Collidable.collider.get(), entity1CorrectedPosition, entity1Transform.rotation, entity1Transform.scale);
-		transform(entity2Collidable.collider.get(), entity2CorrectedPosition, entity2Transform.rotation, entity2Transform.scale);
+		transform(entity1Collidable.collider.get(), entity1Transform.position + entity1CorrectedPositionDelta, entity1Transform.rotation, entity1Transform.scale);
+		transform(entity2Collidable.collider.get(), entity2Transform.position + entity2CorrectedPositionDelta, entity2Transform.rotation, entity2Transform.scale);
 
 		// Inverse mass and inertia
 		float invMass1 = 0.0f;
