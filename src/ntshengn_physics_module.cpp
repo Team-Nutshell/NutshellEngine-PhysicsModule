@@ -978,7 +978,7 @@ void NtshEngn::PhysicsModule::transform(ColliderBox* box, const Math::vec3& tran
 }
 
 void NtshEngn::PhysicsModule::transform(ColliderSphere* sphere, const Math::vec3& translation, const Math::vec3& scale) {
-	sphere->center = translation;
+	sphere->center += translation;
 	sphere->radius *= std::max(std::abs(scale.x), std::max(std::abs(scale.y), std::abs(scale.z)));
 }
 
