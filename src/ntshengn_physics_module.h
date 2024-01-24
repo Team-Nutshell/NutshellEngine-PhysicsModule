@@ -42,7 +42,7 @@ struct NarrowphaseCollision {
 	NtshEngn::Entity entity2;
 	NtshEngn::Math::vec3 intersectionNormal;
 	float intersectionDepth;
-	std::vector<NtshEngn::Math::vec3> intersectionPoints;
+	std::vector<std::pair<NtshEngn::Math::vec3, NtshEngn::Math::vec3>> relativeIntersectionPoints;
 };
 
 namespace NtshEngn {
