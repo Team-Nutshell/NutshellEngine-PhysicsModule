@@ -1115,10 +1115,10 @@ std::vector<NtshEngn::Math::vec3> NtshEngn::PhysicsModule::clipEdgesToBox(const 
 	return intersectionPoints;
 }
 
-extern "C" NTSHENGN_MODULE_API NtshEngn::PhysicsModuleInterface * createModule() {
+extern "C" NTSHENGN_MODULE_API NtshEngn::PhysicsModuleInterface* createModule() {
 	return new NtshEngn::PhysicsModule;
 }
 
-extern "C" NTSHENGN_MODULE_API void destroyModule(NtshEngn::PhysicsModuleInterface * m) {
+extern "C" NTSHENGN_MODULE_API void destroyModule(NtshEngn::PhysicsModuleInterface* m) {
 	delete m;
 }
