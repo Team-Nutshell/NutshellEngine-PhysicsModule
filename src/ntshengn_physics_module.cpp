@@ -614,15 +614,7 @@ void NtshEngn::PhysicsModule::collisionsNarrowphase() {
 			narrowphaseCollision.entity2 = entity2;
 			narrowphaseCollision.intersectionNormal = intersectionInformation.normal;
 			narrowphaseCollision.intersectionDepth = intersectionInformation.depth;
-
-			narrowphaseCollision.relativeIntersectionPoints.resize(intersectionInformation.points.size());
-			const Math::vec3 collider1Center = getCenter(collidable1.collider.get());
-			const Math::vec3 collider2Center = getCenter(collidable2.collider.get());
-			for (size_t i = 0; i < intersectionInformation.points.size(); i++) {
-				const Math::vec3 relativePoint1 = intersectionInformation.points[i] - collider1Center;
-				const Math::vec3 relativePoint2 = intersectionInformation.points[i] - collider2Center;
-				narrowphaseCollision.relativeIntersectionPoints[i] = { relativePoint1, relativePoint2 };
-			}
+			narrowphaseCollision.relativeIntersectionPoints = intersectionInformation.relativePoints;
 
 			std::unique_lock<std::mutex> lock(mutex);
 			m_narrowphaseCollisions.push_back(narrowphaseCollision);
@@ -631,26 +623,6 @@ void NtshEngn::PhysicsModule::collisionsNarrowphase() {
 		});
 
 	jobSystem->wait();
-}
-
-NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderSphere* sphere1, const ColliderSphere* sphere2) {
-	IntersectionInformation intersectionInformation;
-
-	const Math::vec3 centerDiff = sphere2->center - sphere1->center;
-	const float centerDiffLength = centerDiff.length();
-
-	if ((centerDiffLength < 0.000001f) || (centerDiffLength >= (sphere1->radius + sphere2->radius))) {
-		intersectionInformation.hasIntersected = false;
-
-		return intersectionInformation;
-	}
-
-	intersectionInformation.hasIntersected = true;
-	intersectionInformation.normal = Math::normalize(centerDiff);
-	intersectionInformation.depth = (sphere1->radius + sphere2->radius) - centerDiffLength;
-	intersectionInformation.points = { sphere1->center + (intersectionInformation.normal * sphere1->radius) };
-
-	return intersectionInformation;
 }
 
 NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderBox* box1, const ColliderBox* box2) {
@@ -798,28 +770,22 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 
 	if (intersectionInformation.hasIntersected) {
 		std::vector<Math::vec3> intersectionPoints = clipEdgesToBox(box1Edges, box2, box2Rotation);
+		std::vector<Math::vec3> intersectionPoints2To1 = clipEdgesToBox(box2Edges, box1, box1Rotation);
+		intersectionPoints.insert(intersectionPoints.end(), intersectionPoints2To1.begin(), intersectionPoints2To1.end());
+		
+		std::vector<Math::vec3> alreadySeenPoints;
 		for (size_t i = 0; i < intersectionPoints.size(); i++) {
-			bool foundPoint = false;
-			for (size_t j = 0; j < intersectionInformation.points.size(); j++) {
-				if (intersectionPoints[i] == intersectionInformation.points[j]) {
-					foundPoint = true;
-				}
-			}
-			if (!foundPoint) {
-				intersectionInformation.points.push_back(intersectionPoints[i]);
-			}
-		}
+			std::pair<Math::vec3, Math::vec3> relativePoint = { intersectionPoints[i] - box1->center, intersectionPoints[i] - box2->center };
 
-		intersectionPoints = clipEdgesToBox(box2Edges, box1, box1Rotation);
-		for (size_t i = 0; i < intersectionPoints.size(); i++) {
 			bool foundPoint = false;
-			for (size_t j = 0; j < intersectionInformation.points.size(); j++) {
-				if (intersectionPoints[i] == intersectionInformation.points[j]) {
+			for (size_t j = 0; j < alreadySeenPoints.size(); j++) {
+				if (intersectionPoints[i] == alreadySeenPoints[j]) {
 					foundPoint = true;
 				}
 			}
 			if (!foundPoint) {
-				intersectionInformation.points.push_back(intersectionPoints[i]);
+				alreadySeenPoints.push_back(intersectionPoints[i]);
+				intersectionInformation.relativePoints.push_back(relativePoint);
 			}
 		}
 	}
@@ -857,12 +823,12 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 	}
 
 	const Math::vec3 intersectionNormal = Math::normalize(sphere->center - closestPoint);
-	const Math::vec3 outsidePoint = sphere->center - (intersectionNormal * sphere->radius);
+	const Math::vec3 outsidePoint = (intersectionNormal * -1.0f) * sphere->radius;
 
 	intersectionInformation.hasIntersected = true;
 	intersectionInformation.normal = intersectionNormal;
 	intersectionInformation.depth = sphere->radius - distance;
-	intersectionInformation.points = { closestPoint };
+	intersectionInformation.relativePoints = { { closestPoint - box->center, outsidePoint } };
 
 	return intersectionInformation;
 }
@@ -873,6 +839,26 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 	sphereFromCapsule.radius = capsule->radius;
 
 	return intersect(box, &sphereFromCapsule);
+}
+
+NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderSphere* sphere1, const ColliderSphere* sphere2) {
+	IntersectionInformation intersectionInformation;
+
+	const Math::vec3 centerDiff = sphere2->center - sphere1->center;
+	const float centerDiffLength = centerDiff.length();
+
+	if ((centerDiffLength < 0.000001f) || (centerDiffLength >= (sphere1->radius + sphere2->radius))) {
+		intersectionInformation.hasIntersected = false;
+
+		return intersectionInformation;
+	}
+
+	intersectionInformation.hasIntersected = true;
+	intersectionInformation.normal = Math::normalize(centerDiff);
+	intersectionInformation.depth = (sphere1->radius + sphere2->radius) - centerDiffLength;
+	intersectionInformation.relativePoints = { { intersectionInformation.normal * sphere1->radius, (intersectionInformation.normal * -1.0f) * sphere2->radius } };
+
+	return intersectionInformation;
 }
 
 NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderSphere* sphere, const ColliderCapsule* capsule) {
@@ -901,6 +887,9 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 	IntersectionInformation intersectionInformation = intersect(sphere, capsule);
 	if (intersectionInformation.hasIntersected) {
 		intersectionInformation.normal = intersectionInformation.normal * -1.0f;
+		for (size_t i = 0; i < intersectionInformation.relativePoints.size(); i++) {
+			std::swap(intersectionInformation.relativePoints[i].first, intersectionInformation.relativePoints[i].second);
+		}
 	}
 
 	return intersectionInformation;
@@ -910,6 +899,9 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 	IntersectionInformation intersectionInformation = intersect(box, sphere);
 	if (intersectionInformation.hasIntersected) {
 		intersectionInformation.normal = intersectionInformation.normal * -1.0f;
+		for (size_t i = 0; i < intersectionInformation.relativePoints.size(); i++) {
+			std::swap(intersectionInformation.relativePoints[i].first, intersectionInformation.relativePoints[i].second);
+		}
 	}
 
 	return intersectionInformation;
@@ -919,6 +911,9 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 	IntersectionInformation intersectionInformation = intersect(box, capsule);
 	if (intersectionInformation.hasIntersected) {
 		intersectionInformation.normal = intersectionInformation.normal * -1.0f;
+		for (size_t i = 0; i < intersectionInformation.relativePoints.size(); i++) {
+			std::swap(intersectionInformation.relativePoints[i].first, intersectionInformation.relativePoints[i].second);
+		}
 	}
 
 	return intersectionInformation;

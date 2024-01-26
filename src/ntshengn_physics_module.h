@@ -77,9 +77,9 @@ namespace NtshEngn {
 
 		IntersectionInformation intersect(const ColliderBox* box1, const ColliderBox* box2);
 		IntersectionInformation intersect(const ColliderBox* box, const ColliderSphere* sphere);
+		IntersectionInformation intersect(const ColliderBox* box, const ColliderCapsule* capsule);
 		IntersectionInformation intersect(const ColliderSphere* sphere1, const ColliderSphere* sphere2);
 		IntersectionInformation intersect(const ColliderSphere* sphere, const ColliderCapsule* capsule);
-		IntersectionInformation intersect(const ColliderBox* box, const ColliderCapsule* capsule);
 		IntersectionInformation intersect(const ColliderCapsule* capsule1, const ColliderCapsule* capsule2);
 
 		IntersectionInformation intersect(const ColliderSphere* sphere, const ColliderBox* box);
