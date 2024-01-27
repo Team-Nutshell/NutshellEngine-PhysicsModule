@@ -576,11 +576,9 @@ void NtshEngn::PhysicsModule::collisionsBroadphase() {
 				const Rigidbody& entity1Rigidbody = ecs->getComponent<Rigidbody>(broadphaseCollision.entity1);
 				const Rigidbody& entity2Rigidbody = ecs->getComponent<Rigidbody>(broadphaseCollision.entity2);
 
-				if (entity1Rigidbody.isStatic && entity2Rigidbody.isStatic) {
-					return;
+				if (!entity1Rigidbody.isStatic || !entity2Rigidbody.isStatic) {
+					m_broadphaseCollisions.insert(broadphaseCollision);
 				}
-
-				m_broadphaseCollisions.insert(broadphaseCollision);
 			}
 		}
 		});
