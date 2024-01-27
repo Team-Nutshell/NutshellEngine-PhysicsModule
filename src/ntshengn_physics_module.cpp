@@ -270,7 +270,10 @@ void NtshEngn::PhysicsModule::eulerIntegrator(float dtSeconds) {
 			entityRigidbodyState.angularVelocity += entityRigidbodyState.angularAcceleration * dtSeconds;
 
 			entityTransform.position += entityRigidbodyState.linearVelocity * dtSeconds;
-			entityTransform.rotation += entityRigidbodyState.angularVelocity * dtSeconds;
+
+			if (!entityRigidbody.lockRotation) {
+				entityTransform.rotation += entityRigidbodyState.angularVelocity * dtSeconds;
+			}
 		}
 		else {
 			entityRigidbodyState.linearVelocity = { 0.0f, 0.0f, 0.0f };
