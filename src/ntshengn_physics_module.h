@@ -6,14 +6,6 @@
 #include <vector>
 #include <unordered_map>
 
-struct RigidbodyState {
-	NtshEngn::Math::vec3 linearAcceleration = NtshEngn::Math::vec3(0.0f, 0.0f, 0.0f);
-	NtshEngn::Math::vec3 linearVelocity = NtshEngn::Math::vec3(0.0f, 0.0f, 0.0f);
-
-	NtshEngn::Math::vec3 angularAcceleration = NtshEngn::Math::vec3(0.0f, 0.0f, 0.0f);
-	NtshEngn::Math::vec3 angularVelocity = NtshEngn::Math::vec3(0.0f, 0.0f, 0.0f);
-};
-
 struct ObjectDuringCollisionResponseState {
 	NtshEngn::Math::vec3 position = NtshEngn::Math::vec3(0.0f, 0.0f, 0.0f);
 	NtshEngn::Math::vec3 linearVelocity = NtshEngn::Math::vec3(0.0f, 0.0f, 0.0f);
@@ -64,9 +56,6 @@ namespace NtshEngn {
 	public:
 		const ComponentMask getComponentMask() const;
 
-		void onEntityComponentAdded(Entity entity, Component componentID);
-		void onEntityComponentRemoved(Entity entity, Component componentID);
-
 	private:
 		void eulerIntegrator(float dtSeconds);
 		void collisionsDetection();
@@ -110,8 +99,6 @@ namespace NtshEngn {
 
 		std::set<BroadphaseCollision> m_broadphaseCollisions;
 		std::vector<NarrowphaseCollision> m_narrowphaseCollisions;
-
-		std::unordered_map<Entity, RigidbodyState> m_rigidbodyStates;
 	};
 
 }
