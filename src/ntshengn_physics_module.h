@@ -35,6 +35,13 @@ struct NarrowphaseCollision {
 	NtshEngn::Math::vec3 intersectionNormal;
 	float intersectionDepth;
 	std::vector<std::pair<NtshEngn::Math::vec3, NtshEngn::Math::vec3>> relativeIntersectionPoints;
+
+	bool operator<(const NarrowphaseCollision& other) const {
+		size_t hash = static_cast<size_t>(entity1) + (static_cast<size_t>(entity2) << 8);
+		size_t otherHash = static_cast<size_t>(other.entity1) + (static_cast<size_t>(other.entity2) << 8);
+
+		return hash < otherHash;
+	}
 };
 
 namespace NtshEngn {
@@ -99,6 +106,8 @@ namespace NtshEngn {
 
 		std::set<BroadphaseCollision> m_broadphaseCollisions;
 		std::vector<NarrowphaseCollision> m_narrowphaseCollisions;
+
+		std::vector<NarrowphaseCollision> m_previousNarrowphaseCollisions;
 	};
 
 }

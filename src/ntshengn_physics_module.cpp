@@ -237,39 +237,42 @@ std::vector<NtshEngn::RaycastInformation> NtshEngn::PhysicsModule::raycast(const
 const NtshEngn::ComponentMask NtshEngn::PhysicsModule::getComponentMask() const {
 	ComponentMask componentMask;
 	componentMask.set(ecs->getComponentID<Rigidbody>());
+	componentMask.set(ecs->getComponentID<Collidable>());
 
 	return componentMask;
 }
 
 void NtshEngn::PhysicsModule::eulerIntegrator(float dtSeconds) {
 	for (Entity entity : entities) {
-		Rigidbody& entityRigidbody = ecs->getComponent<Rigidbody>(entity);
-		if (!entityRigidbody.isStatic) {
-			Transform& entityTransform = ecs->getComponent<Transform>(entity);
+		if (ecs->hasComponent<Rigidbody>(entity)) {
+			Rigidbody& entityRigidbody = ecs->getComponent<Rigidbody>(entity);
+			if (!entityRigidbody.isStatic) {
+				Transform& entityTransform = ecs->getComponent<Transform>(entity);
 
-			entityRigidbody.linearAcceleration = entityRigidbody.force / entityRigidbody.mass;
-			entityRigidbody.angularAcceleration = entityRigidbody.torque / entityRigidbody.inertia;
+				entityRigidbody.linearAcceleration = entityRigidbody.force / entityRigidbody.mass;
+				entityRigidbody.angularAcceleration = entityRigidbody.torque / entityRigidbody.inertia;
 
-			if (entityRigidbody.isAffectedByConstants) {
-				entityRigidbody.linearAcceleration += m_gravity;
+				if (entityRigidbody.isAffectedByConstants) {
+					entityRigidbody.linearAcceleration += m_gravity;
+				}
+
+				entityRigidbody.linearVelocity += entityRigidbody.linearAcceleration * dtSeconds;
+				entityRigidbody.angularVelocity += entityRigidbody.angularAcceleration * dtSeconds;
+
+				entityTransform.position += entityRigidbody.linearVelocity * dtSeconds;
+
+				if (!entityRigidbody.lockRotation) {
+					entityTransform.rotation += entityRigidbody.angularVelocity * dtSeconds;
+				}
+			}
+			else {
+				entityRigidbody.linearVelocity = { 0.0f, 0.0f, 0.0f };
+				entityRigidbody.angularVelocity = { 0.0f, 0.0f, 0.0f };
 			}
 
-			entityRigidbody.linearVelocity += entityRigidbody.linearAcceleration * dtSeconds;
-			entityRigidbody.angularVelocity += entityRigidbody.angularAcceleration * dtSeconds;
-
-			entityTransform.position += entityRigidbody.linearVelocity * dtSeconds;
-
-			if (!entityRigidbody.lockRotation) {
-				entityTransform.rotation += entityRigidbody.angularVelocity * dtSeconds;
-			}
+			entityRigidbody.force = { 0.0f, 0.0f, 0.0f };
+			entityRigidbody.torque = { 0.0f, 0.0f, 0.0f };
 		}
-		else {
-			entityRigidbody.linearVelocity = { 0.0f, 0.0f, 0.0f };
-			entityRigidbody.angularVelocity = { 0.0f, 0.0f, 0.0f };
-		}
-
-		entityRigidbody.force = { 0.0f, 0.0f, 0.0f };
-		entityRigidbody.torque = { 0.0f, 0.0f, 0.0f };
 	}
 }
 
@@ -282,6 +285,10 @@ void NtshEngn::PhysicsModule::collisionsResponse() {
 	std::unordered_map<Entity, ObjectDuringCollisionResponseState> objectStates;
 
 	for (const NarrowphaseCollision& collision : m_narrowphaseCollisions) {
+		if (!ecs->hasComponent<Rigidbody>(collision.entity1) || !ecs->hasComponent<Rigidbody>(collision.entity2)) {
+			continue;
+		}
+
 		const Rigidbody& entity1Rigidbody = ecs->getComponent<Rigidbody>(collision.entity1);
 		const Rigidbody& entity2Rigidbody = ecs->getComponent<Rigidbody>(collision.entity2);
 
@@ -428,6 +435,108 @@ void NtshEngn::PhysicsModule::collisionsResponse() {
 			entityRigidbody.angularVelocity += objectState.second.angularVelocity;
 		}
 	}
+
+	// Call scripts onCollisionEnter, onCollisionStill and onCollisionExit
+	std::sort(m_narrowphaseCollisions.begin(), m_narrowphaseCollisions.end());
+	std::vector<NarrowphaseCollision> collisionsEnter;
+	std::vector<NarrowphaseCollision> collisionsStill;
+	std::vector<NarrowphaseCollision> collisionsExit;
+	std::set_difference(m_narrowphaseCollisions.begin(), m_narrowphaseCollisions.end(), m_previousNarrowphaseCollisions.begin(), m_previousNarrowphaseCollisions.end(), std::back_inserter(collisionsEnter));
+	std::set_intersection(m_narrowphaseCollisions.begin(), m_narrowphaseCollisions.end(), m_previousNarrowphaseCollisions.begin(), m_previousNarrowphaseCollisions.end(), std::back_inserter(collisionsStill));
+	std::set_difference(m_previousNarrowphaseCollisions.begin(), m_previousNarrowphaseCollisions.end(), m_narrowphaseCollisions.begin(), m_narrowphaseCollisions.end(), std::back_inserter(collisionsExit));
+
+	// onCollisionEnter
+	for (const NarrowphaseCollision& collisionEnter : collisionsEnter) {
+		if (ecs->entityExists(collisionEnter.entity1) && ecs->hasComponent<Scriptable>(collisionEnter.entity1)) {
+			CollisionInfo collisionInfo;
+			collisionInfo.otherEntity = collisionEnter.entity2;
+			collisionInfo.normal = collisionEnter.intersectionNormal;
+			collisionInfo.depth = collisionEnter.intersectionDepth;
+			
+			for (const std::pair<Math::vec3, Math::vec3>& relativePoint : collisionEnter.relativeIntersectionPoints) {
+				collisionInfo.relativePoints.push_back(relativePoint.first);
+			}
+
+			Scriptable& entityScriptable = ecs->getComponent<Scriptable>(collisionEnter.entity1);
+			entityScriptable.script->onCollisionEnter(collisionInfo);
+		}
+
+		if (ecs->entityExists(collisionEnter.entity2) && ecs->hasComponent<Scriptable>(collisionEnter.entity2)) {
+			CollisionInfo collisionInfo;
+			collisionInfo.otherEntity = collisionEnter.entity1;
+			collisionInfo.normal = collisionEnter.intersectionNormal * -1.0f;
+			collisionInfo.depth = collisionEnter.intersectionDepth;
+
+			for (const std::pair<Math::vec3, Math::vec3>& relativePoint : collisionEnter.relativeIntersectionPoints) {
+				collisionInfo.relativePoints.push_back(relativePoint.second);
+			}
+
+			Scriptable& entityScriptable = ecs->getComponent<Scriptable>(collisionEnter.entity2);
+			entityScriptable.script->onCollisionEnter(collisionInfo);
+		}
+	}
+
+	// onCollisionStill
+	for (const NarrowphaseCollision& collisionStill : collisionsStill) {
+		if (ecs->entityExists(collisionStill.entity1) && ecs->hasComponent<Scriptable>(collisionStill.entity1)) {
+			CollisionInfo collisionInfo;
+			collisionInfo.otherEntity = collisionStill.entity2;
+			collisionInfo.normal = collisionStill.intersectionNormal;
+			collisionInfo.depth = collisionStill.intersectionDepth;
+
+			for (const std::pair<Math::vec3, Math::vec3>& relativePoint : collisionStill.relativeIntersectionPoints) {
+				collisionInfo.relativePoints.push_back(relativePoint.first);
+			}
+
+			Scriptable& entityScriptable = ecs->getComponent<Scriptable>(collisionStill.entity1);
+			entityScriptable.script->onCollisionStill(collisionInfo);
+		}
+
+		if (ecs->entityExists(collisionStill.entity2) && ecs->hasComponent<Scriptable>(collisionStill.entity2)) {
+			CollisionInfo collisionInfo;
+			collisionInfo.otherEntity = collisionStill.entity1;
+			collisionInfo.normal = collisionStill.intersectionNormal * -1.0f;
+			collisionInfo.depth = collisionStill.intersectionDepth;
+
+			for (const std::pair<Math::vec3, Math::vec3>& relativePoint : collisionStill.relativeIntersectionPoints) {
+				collisionInfo.relativePoints.push_back(relativePoint.second);
+			}
+
+			Scriptable& entityScriptable = ecs->getComponent<Scriptable>(collisionStill.entity2);
+			entityScriptable.script->onCollisionStill(collisionInfo);
+		}
+	}
+
+	// onCollisionExit
+	for (const NarrowphaseCollision& collisionExit : collisionsExit) {
+		if (ecs->entityExists(collisionExit.entity1) && ecs->hasComponent<Scriptable>(collisionExit.entity1)) {
+			CollisionInfo collisionInfo;
+			collisionInfo.otherEntity = collisionExit.entity2;
+			collisionInfo.normal = collisionExit.intersectionNormal;
+			collisionInfo.depth = collisionExit.intersectionDepth;
+
+			for (const std::pair<Math::vec3, Math::vec3>& relativePoint : collisionExit.relativeIntersectionPoints) {
+				collisionInfo.relativePoints.push_back(relativePoint.first);
+			}
+
+			Scriptable& entityScriptable = ecs->getComponent<Scriptable>(collisionExit.entity1);
+			entityScriptable.script->onCollisionExit(collisionInfo);
+		}
+
+		if (ecs->entityExists(collisionExit.entity2) && ecs->hasComponent<Scriptable>(collisionExit.entity2)) {
+			CollisionInfo collisionInfo;
+			collisionInfo.otherEntity = collisionExit.entity1;
+			collisionInfo.normal = collisionExit.intersectionNormal * -1.0f;
+			collisionInfo.depth = collisionExit.intersectionDepth;
+
+			for (const std::pair<Math::vec3, Math::vec3>& relativePoint : collisionExit.relativeIntersectionPoints) {
+				collisionInfo.relativePoints.push_back(relativePoint.second);
+			}
+
+			Scriptable& entityScriptable = ecs->getComponent<Scriptable>(collisionExit.entity2);
+			entityScriptable.script->onCollisionExit(collisionInfo);
+		}
+	}
 }
 
 void NtshEngn::PhysicsModule::collisionsBroadphase() {
@@ -563,10 +672,18 @@ void NtshEngn::PhysicsModule::collisionsBroadphase() {
 				broadphaseCollision.entity1 = std::min(i->object, j->object);
 				broadphaseCollision.entity2 = std::max(i->object, j->object);
 
-				const Rigidbody& entity1Rigidbody = ecs->getComponent<Rigidbody>(broadphaseCollision.entity1);
-				const Rigidbody& entity2Rigidbody = ecs->getComponent<Rigidbody>(broadphaseCollision.entity2);
+				bool entity1IsStatic = false;
+				bool entity2IsStatic = false;
+				if (ecs->hasComponent<Rigidbody>(broadphaseCollision.entity1)) {
+					const Rigidbody& entity1Rigidbody = ecs->getComponent<Rigidbody>(broadphaseCollision.entity1);
+					entity1IsStatic = entity1Rigidbody.isStatic;
+				}
+				if (ecs->hasComponent<Rigidbody>(broadphaseCollision.entity2)) {
+					const Rigidbody& entity2Rigidbody = ecs->getComponent<Rigidbody>(broadphaseCollision.entity2);
+					entity2IsStatic = entity2Rigidbody.isStatic;
+				}
 
-				if (!entity1Rigidbody.isStatic || !entity2Rigidbody.isStatic) {
+				if (!entity1IsStatic || !entity2IsStatic) {
 					m_broadphaseCollisions.insert(broadphaseCollision);
 				}
 			}
@@ -575,6 +692,7 @@ void NtshEngn::PhysicsModule::collisionsBroadphase() {
 }
 
 void NtshEngn::PhysicsModule::collisionsNarrowphase() {
+	m_previousNarrowphaseCollisions = m_narrowphaseCollisions;
 	m_narrowphaseCollisions.clear();
 
 	std::mutex mutex;
