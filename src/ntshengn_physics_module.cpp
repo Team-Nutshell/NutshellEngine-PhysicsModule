@@ -546,6 +546,7 @@ void NtshEngn::PhysicsModule::collisionsBroadphase() {
 	Math::vec3 sceneAABBMax;
 
 	std::unordered_map<Entity, AABB> entityAABBs;
+	std::unordered_map<Entity, bool> entityStatic;
 	for (const Entity& entity : entities) {
 		AABB entityAABB;
 
@@ -637,7 +638,14 @@ void NtshEngn::PhysicsModule::collisionsBroadphase() {
 			continue;
 		}
 
+		bool entityIsStatic = false;
+		if (ecs->hasComponent<Rigidbody>(entity)) {
+			const Rigidbody& entityRigidbody = ecs->getComponent<Rigidbody>(entity);
+			entityIsStatic = entityRigidbody.isStatic;
+		}
+
 		entityAABBs[entity] = entityAABB;
+		entityStatic[entity] = entityIsStatic;
 
 		if ((entityAABB.position.x - entityAABB.size.x) < sceneAABBMin.x) {
 			sceneAABBMin.x = entityAABB.position.x - entityAABB.size.x;
@@ -665,25 +673,14 @@ void NtshEngn::PhysicsModule::collisionsBroadphase() {
 		octree.insert(it.first, it.second.position, it.second.size);
 	}
 
-	octree.execute([this](std::vector<Octree<Entity>::Entry>& entries) {
+	octree.execute([this, &entityStatic](std::vector<Octree<Entity>::Entry>& entries) {
 		for (std::vector<Octree<Entity>::Entry>::iterator i = entries.begin(); i != entries.end(); i++) {
 			for (std::vector<Octree<Entity>::Entry>::iterator j = std::next(i); j != entries.end(); j++) {
 				BroadphaseCollision broadphaseCollision;
 				broadphaseCollision.entity1 = std::min(i->object, j->object);
 				broadphaseCollision.entity2 = std::max(i->object, j->object);
 
-				bool entity1IsStatic = false;
-				bool entity2IsStatic = false;
-				if (ecs->hasComponent<Rigidbody>(broadphaseCollision.entity1)) {
-					const Rigidbody& entity1Rigidbody = ecs->getComponent<Rigidbody>(broadphaseCollision.entity1);
-					entity1IsStatic = entity1Rigidbody.isStatic;
-				}
-				if (ecs->hasComponent<Rigidbody>(broadphaseCollision.entity2)) {
-					const Rigidbody& entity2Rigidbody = ecs->getComponent<Rigidbody>(broadphaseCollision.entity2);
-					entity2IsStatic = entity2Rigidbody.isStatic;
-				}
-
-				if (!entity1IsStatic || !entity2IsStatic) {
+				if (!entityStatic[broadphaseCollision.entity1] || !entityStatic[broadphaseCollision.entity2]) {
 					m_broadphaseCollisions.insert(broadphaseCollision);
 				}
 			}
