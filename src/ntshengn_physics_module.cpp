@@ -1169,11 +1169,11 @@ std::vector<NtshEngn::Math::vec3> NtshEngn::PhysicsModule::clipEdgesToBox(const 
 		float planeDistance;
 		if (i % 2 == 0) {
 			planeAxis = boxRotation[i / 2];
-			planeDistance = Math::dot(planeAxis, (box->center + (planeAxis * box->halfExtent[i / 2])));
+			planeDistance = Math::dot(boxRotation[i / 2], (box->center + (boxRotation[i / 2] * box->halfExtent[i / 2])));
 		}
 		else {
 			planeAxis = boxRotation[i / 2] * -1.0f;
-			planeDistance = -Math::dot(planeAxis, (box->center - (planeAxis * box->halfExtent[i / 2])));
+			planeDistance = -Math::dot(boxRotation[i / 2], (box->center - (boxRotation[i / 2] * box->halfExtent[i / 2])));
 		}
 
 		// For each edge
@@ -1196,7 +1196,7 @@ std::vector<NtshEngn::Math::vec3> NtshEngn::PhysicsModule::clipEdgesToBox(const 
 				for (uint8_t k = 0; k < 3; k++) {
 					const float intersectionPointDirDotAxisToProject = Math::dot(intersectionPointDir, Math::vec3(boxRotation[k]));
 
-					if ((intersectionPointDirDotAxisToProject < -box->halfExtent[k]) || (intersectionPointDirDotAxisToProject > box->halfExtent[k])) {
+					if ((intersectionPointDirDotAxisToProject < -(box->halfExtent[k] + 0.0001f)) || (intersectionPointDirDotAxisToProject > (box->halfExtent[k] + 0.0001f))) {
 						isInsideBox = false;
 
 						break;
