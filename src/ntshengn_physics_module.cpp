@@ -6,6 +6,7 @@
 #include "../Common/utils/ntshengn_utils_octree.h"
 #include <algorithm>
 #include <limits>
+#include <array>
 #include <cmath>
 
 void NtshEngn::PhysicsModule::init() {
@@ -940,11 +941,36 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 }
 
 NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderBox* box, const ColliderCapsule* capsule) {
-	ColliderSphere sphereFromCapsule;
-	sphereFromCapsule.center = closestPointOnSegment(box->center, capsule->base, capsule->tip);
-	sphereFromCapsule.radius = capsule->radius;
+	IntersectionInformation intersectionInformation;
 
-	return intersect(box, &sphereFromCapsule);
+	const Math::mat4 boxRotation = Math::rotate(box->rotation.x, Math::vec3(1.0f, 0.0f, 0.0f)) *
+		Math::rotate(box->rotation.y, Math::vec3(0.0f, 1.0f, 0.0f)) *
+		Math::rotate(box->rotation.z, Math::vec3(0.0f, 0.0f, 1.0f));
+	
+	float distanceToSegmentOrigin;
+	Math::vec3 pointOnBox;
+	const float squaredDistance = squaredDistanceSegmentBox(capsule->base, capsule->tip, box, boxRotation, distanceToSegmentOrigin, pointOnBox);
+	if (squaredDistance >= (capsule->radius * capsule->radius)) {
+		intersectionInformation.hasIntersected = false;
+
+		return intersectionInformation;
+	}
+
+	if (squaredDistance != 0.0f) {
+		const Math::vec3 pointOnSegment = capsule->base + ((capsule->tip - capsule->base) * distanceToSegmentOrigin);
+		pointOnBox = box->center + Math::vec3(boxRotation * Math::vec4(pointOnBox, 1.0f));
+
+		Math::vec3 normal = pointOnSegment - pointOnBox;
+		const float normalLength = normal.length();
+
+		if (normalLength > 0.0f) {
+			normal *= 1.0f / normalLength;
+
+			boxCapsuleIntersectionInformation(box, boxRotation, capsule, normal, intersectionInformation);
+		}
+	}
+
+	return intersectionInformation;
 }
 
 NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderSphere* sphere1, const ColliderSphere* sphere2) {
@@ -1158,6 +1184,499 @@ std::pair<NtshEngn::Math::vec3, NtshEngn::Math::vec3> NtshEngn::PhysicsModule::c
 	}
 
 	return std::pair<Math::vec3, Math::vec3>(segmentA1 + (segmentA * s), segmentB1 + (segmentB * t));
+}
+
+// https://github.com/NVIDIA-Omniverse/PhysX/blob/439b4767167e1753d335b613b059140d4d1b4757/physx/source/geomutils/src/distance/GuDistanceSegmentBox.cpp
+float NtshEngn::PhysicsModule::squaredDistanceLineBoxFace(uint8_t index0, uint8_t index1, uint8_t index2, Math::vec3& point, const Math::vec3& direction, const Math::vec3& boxHalfExtent, const Math::vec3& halfExtentToPoint, float& distanceToLineOrigin) {
+	float squaredDistance = 0.0f;
+
+	Math::vec3 pointPlusHalfExtent;
+	pointPlusHalfExtent[index1] = point[index1] + boxHalfExtent[1];
+	pointPlusHalfExtent[index2] = point[index2] + boxHalfExtent[2];
+
+	if ((direction[index0] * pointPlusHalfExtent[index1]) >= (direction[index1] * halfExtentToPoint[index0])) {
+		if ((direction[index0] * pointPlusHalfExtent[index2]) >= (direction[index2] * halfExtentToPoint[index0])) {
+			point[index0] = halfExtentToPoint[index0];
+			const float inv = 1.0f / direction[index0];
+			point[index1] -= direction[index1] * halfExtentToPoint[index0] * inv;
+			point[index2] -= direction[index2] * halfExtentToPoint[index0] * inv;
+			distanceToLineOrigin = -halfExtentToPoint[index0] * inv;
+		}
+		else {
+			float lSquared = (direction[index0] * direction[index0]) + (direction[index2] * direction[index2]);
+			float tmp = (lSquared * pointPlusHalfExtent[index1]) - (direction[index1] * ((direction[index0] * halfExtentToPoint[index0]) + (direction[index2] * pointPlusHalfExtent[index2])));
+			if (tmp <= (2.0f * lSquared * boxHalfExtent[index1])) {
+				const float t = tmp / lSquared;
+				lSquared += direction[index1] * direction[index1];
+				tmp = pointPlusHalfExtent[index1] - t;
+				const float delta = (direction[index0] * halfExtentToPoint[index0]) + (direction[index1] * tmp) + (direction[index2] * pointPlusHalfExtent[index2]);
+				distanceToLineOrigin = -delta / lSquared;
+				squaredDistance += (halfExtentToPoint[index0] * halfExtentToPoint[index0]) + (tmp * tmp) + (pointPlusHalfExtent[index2] * pointPlusHalfExtent[index2]) + (delta * distanceToLineOrigin);
+				point[index0] = boxHalfExtent[index0];
+				point[index1] = t - boxHalfExtent[index1];
+				point[index2] = -boxHalfExtent[index2];
+			}
+			else {
+				lSquared += direction[index1] * direction[index1];
+				const float delta = (direction[index0] * halfExtentToPoint[index0]) + (direction[index1] * halfExtentToPoint[index1]) + (direction[index2] * pointPlusHalfExtent[index2]);
+				distanceToLineOrigin = -delta / lSquared;
+				squaredDistance += (halfExtentToPoint[index0] * halfExtentToPoint[index0]) + (halfExtentToPoint[index1] * halfExtentToPoint[index1]) + (pointPlusHalfExtent[index2] * pointPlusHalfExtent[index2]) + (delta * distanceToLineOrigin);
+				point[index0] = boxHalfExtent[index0];
+				point[index1] = boxHalfExtent[index1];
+				point[index2] = -boxHalfExtent[index2];
+			}
+		}
+	}
+	else {
+		if ((direction[index0] * pointPlusHalfExtent[index2]) >= (direction[index2] * halfExtentToPoint[index0])) {
+			float lSquared = (direction[index0] * direction[index0]) + (direction[index1] * direction[index1]);
+			float tmp = (lSquared * pointPlusHalfExtent[index2]) - (direction[index2] * ((direction[index0] * halfExtentToPoint[index0]) + (direction[index1] * pointPlusHalfExtent[index1])));
+			if (tmp <= (2.0f * lSquared * boxHalfExtent[index2])) {
+				const float t = tmp / lSquared;
+				lSquared += direction[index2] * direction[index2];
+				tmp = pointPlusHalfExtent[index2] - t;
+				const float delta = (direction[index0] * halfExtentToPoint[index0]) + (direction[index1] * pointPlusHalfExtent[index1]) + (direction[index2] * tmp);
+				distanceToLineOrigin = -delta / lSquared;
+				squaredDistance += (halfExtentToPoint[index0] * halfExtentToPoint[index0]) + (pointPlusHalfExtent[index1] * pointPlusHalfExtent[index1]) + (tmp * tmp) + (delta * distanceToLineOrigin);
+				point[index0] = boxHalfExtent[index0];
+				point[index1] = -boxHalfExtent[index1];
+				point[index2] = t - boxHalfExtent[index2];
+			}
+			else {
+				lSquared += direction[index2] * direction[index2];
+				const float delta = (direction[index0] * halfExtentToPoint[index0]) + (direction[index1] * pointPlusHalfExtent[index1]) + (direction[index2] * halfExtentToPoint[index2]);
+				distanceToLineOrigin = -delta / lSquared;
+				squaredDistance += (halfExtentToPoint[index0] * halfExtentToPoint[index0]) + (pointPlusHalfExtent[index1] * pointPlusHalfExtent[index1]) + (halfExtentToPoint[index2] * halfExtentToPoint[index2]) + (delta * distanceToLineOrigin);
+				point[index0] = boxHalfExtent[index0];
+				point[index1] = -boxHalfExtent[index1];
+				point[index2] = boxHalfExtent[index2];
+			}
+		}
+		else {
+			float lSquared = (direction[index0] * direction[index0]) + (direction[index2] * direction[index2]);
+			float tmp = (lSquared * pointPlusHalfExtent[index1]) - (direction[index1] * ((direction[index0] * halfExtentToPoint[index0]) + (direction[index2] * pointPlusHalfExtent[index2])));
+			if (tmp >= 0.0f) {
+				if (tmp <= (2.0f * lSquared * boxHalfExtent[index1])) {
+					const float t = tmp / lSquared;
+					lSquared += direction[index1] * direction[index1];
+					tmp = pointPlusHalfExtent[index1] - t;
+					const float delta = (direction[index0] * halfExtentToPoint[index0]) + (direction[index1] * tmp) + (direction[index2] * pointPlusHalfExtent[index2]);
+					distanceToLineOrigin = -delta / lSquared;
+					squaredDistance += (halfExtentToPoint[index0] * halfExtentToPoint[index0]) + (tmp * tmp) + (pointPlusHalfExtent[index2] * pointPlusHalfExtent[index2]) + (delta * distanceToLineOrigin);
+					point[index0] = boxHalfExtent[index0];
+					point[index1] = t - boxHalfExtent[index1];
+					point[index2] = -boxHalfExtent[index2];
+				}
+				else {
+					lSquared += direction[index1] * direction[index1];
+					const float delta = (direction[index0] * halfExtentToPoint[index0]) + (direction[index1] * halfExtentToPoint[index1]) + (direction[index2] * pointPlusHalfExtent[index2]);
+					distanceToLineOrigin = -delta / lSquared;
+					squaredDistance += (halfExtentToPoint[index0] * halfExtentToPoint[index0]) + (halfExtentToPoint[index1] * halfExtentToPoint[index1]) + (pointPlusHalfExtent[index2] * pointPlusHalfExtent[index2]) + (delta * distanceToLineOrigin);
+					point[index0] = boxHalfExtent[index0];
+					point[index1] = boxHalfExtent[index1];
+					point[index2] = -boxHalfExtent[index2];
+				}
+
+				return squaredDistance;
+			}
+
+			lSquared = (direction[index0] * direction[index0]) + (direction[index1] * direction[index1]);
+			tmp = (lSquared * pointPlusHalfExtent[index2]) - (direction[index2] * ((direction[index0] * halfExtentToPoint[index0]) + (direction[index1] * pointPlusHalfExtent[index1])));
+			if (tmp >= 0.0f) {
+				if (tmp <= (2.0f * lSquared * boxHalfExtent[index2])) {
+					const float t = tmp / lSquared;
+					lSquared += direction[index2] * direction[index2];
+					tmp = pointPlusHalfExtent[index2] - t;
+					const float delta = (direction[index0] * halfExtentToPoint[index0]) + (direction[index1] * pointPlusHalfExtent[index1]) + (direction[index2] * tmp);
+					distanceToLineOrigin = -delta / lSquared;
+					squaredDistance += (halfExtentToPoint[index0] * halfExtentToPoint[index0]) + (pointPlusHalfExtent[index1] * pointPlusHalfExtent[index1]) + (tmp * tmp) + (delta * distanceToLineOrigin);
+					point[index0] = boxHalfExtent[index0];
+					point[index1] = -boxHalfExtent[index1];
+					point[index2] = t - boxHalfExtent[index2];
+				}
+				else {
+					lSquared += direction[index2] * direction[index2];
+					const float delta = (direction[index0] * halfExtentToPoint[index0]) + (direction[index1] * pointPlusHalfExtent[index1]) + (direction[index2] * halfExtentToPoint[index2]);
+					distanceToLineOrigin = -delta / lSquared;
+					squaredDistance += (halfExtentToPoint[index0] * halfExtentToPoint[index0]) + (pointPlusHalfExtent[index1] * pointPlusHalfExtent[index1]) + (halfExtentToPoint[index2] * halfExtentToPoint[index2]) + (delta * distanceToLineOrigin);
+					point[index0] = boxHalfExtent[index0];
+					point[index1] = -boxHalfExtent[index1];
+					point[index2] = boxHalfExtent[index2];
+				}
+
+				return squaredDistance;
+			}
+
+			lSquared += direction[index2] * direction[index2];
+			const float delta = (direction[index0] * halfExtentToPoint[index0]) + (direction[index1] * pointPlusHalfExtent[index1]) + (direction[index2] * pointPlusHalfExtent[index2]);
+			distanceToLineOrigin = -delta / lSquared;
+			squaredDistance += (halfExtentToPoint[index0] * halfExtentToPoint[index0]) + (pointPlusHalfExtent[index1] * pointPlusHalfExtent[index1]) + (pointPlusHalfExtent[index2] * pointPlusHalfExtent[index2]) + (delta * distanceToLineOrigin);
+			point[index0] = boxHalfExtent[index0];
+			point[index1] = -boxHalfExtent[index1];
+			point[index2] = -boxHalfExtent[index2];
+		}
+	}
+
+	return squaredDistance;
+}
+
+float NtshEngn::PhysicsModule::squaredDistanceLineBoxNo0(Math::vec3& point, const Math::vec3& direction, const Math::vec3& boxHalfExtent, float& distanceToLineOrigin) {
+	float squaredDistance = 0.0f;
+	
+	const Math::vec3 halfExtentToPoint = point - boxHalfExtent;
+
+	float productDirXHetpY = direction.x * halfExtentToPoint.y;
+	float productDirYHetpX = direction.y * halfExtentToPoint.x;
+	
+	if (productDirXHetpY >= productDirYHetpX) {
+		float productDirZHetpX = direction.z * halfExtentToPoint.x;
+		float productDirXHetpZ = direction.x * halfExtentToPoint.z;
+
+		if (productDirZHetpX >= productDirXHetpZ) {
+			squaredDistance = squaredDistanceLineBoxFace(0, 1, 2, point, direction, boxHalfExtent, halfExtentToPoint, distanceToLineOrigin);
+		}
+		else {
+			squaredDistance = squaredDistanceLineBoxFace(2, 0, 1, point, direction, boxHalfExtent, halfExtentToPoint, distanceToLineOrigin);
+		}
+	}
+	else {
+		float productDirZHetpY = direction.z * halfExtentToPoint.y;
+		float productDirYHetpZ = direction.y * halfExtentToPoint.z;
+
+		if (productDirZHetpY >= productDirYHetpZ) {
+			squaredDistance = squaredDistanceLineBoxFace(1, 2, 0, point, direction, boxHalfExtent, halfExtentToPoint, distanceToLineOrigin);
+		}
+		else {
+			squaredDistance = squaredDistanceLineBoxFace(2, 0, 1, point, direction, boxHalfExtent, halfExtentToPoint, distanceToLineOrigin);
+		}
+	}
+
+	return squaredDistance;
+}
+
+float NtshEngn::PhysicsModule::squaredDistanceLineBoxOne0(uint8_t index0, uint8_t index1, uint8_t index2, Math::vec3& point, const Math::vec3& direction, const Math::vec3& boxHalfExtent, float& distanceToLineOrigin) {
+	float squaredDistance = 0.0f;
+
+	const float halfExtentToPoint0 = point[index0] - boxHalfExtent[index0];
+	const float halfExtentToPoint1 = point[index1] - boxHalfExtent[index1];
+
+	const float product0 = direction[index1] * halfExtentToPoint0;
+	const float product1 = direction[index0] * halfExtentToPoint1;
+
+	if (product0 >= product1) {
+		point[index0] = boxHalfExtent[index0];
+
+		float halfExtentPlusPoint1 = point[index1] + boxHalfExtent[index1];
+		const float delta = product0 - (direction[index0] * halfExtentPlusPoint1);
+		if (delta >= 0.0f) {
+			const float invLSquare = 1.0f / ((direction[index0] * direction[index0]) + (direction[index1] * direction[index1]));
+			squaredDistance += delta * delta * invLSquare;
+			point[index1] = -boxHalfExtent[index1];
+			distanceToLineOrigin = -((point[0] * halfExtentToPoint0) + (point[1] * halfExtentToPoint1)) * invLSquare;
+		}
+		else {
+			const float inv = 1.0f / direction[index0];
+			point[index1] -= product0 * inv;
+			distanceToLineOrigin = -halfExtentToPoint0 * inv;
+		}
+	}
+	else {
+		point[index1] = boxHalfExtent[index1];
+
+		float halfExtentPlusPoint0 = point[index0] + boxHalfExtent[index0];
+		const float delta = product1 - (direction[index1] * halfExtentPlusPoint0);
+		if (delta >= 0.0f) {
+			const float invLSquare = 1.0f / ((direction[index0] * direction[index0]) + (direction[index1] * direction[index1]));
+			squaredDistance += delta * delta * invLSquare;
+			point[index0] = -boxHalfExtent[index0];
+			distanceToLineOrigin = -((point[0] * halfExtentToPoint0) + (point[1] * halfExtentToPoint1)) * invLSquare;
+		}
+		else {
+			const float inv = 1.0f / direction[index1];
+			point[index0] -= product1 * inv;
+			distanceToLineOrigin = -halfExtentToPoint1 * inv;
+		}
+	}
+
+	if (point[index2] < -boxHalfExtent[index2]) {
+		const float delta = point[index2] + boxHalfExtent[index2];
+		squaredDistance += delta * delta;
+		point[index2] = -boxHalfExtent[index2];
+	}
+	else if (point[index2] > boxHalfExtent[index2]) {
+		const float delta = point[index2] + boxHalfExtent[index2];
+		squaredDistance += delta * delta;
+		point[index2] = -boxHalfExtent[index2];
+	}
+
+	return squaredDistance;
+}
+
+float NtshEngn::PhysicsModule::squaredDistanceLineBoxTwo0(uint8_t index0, uint8_t index1, uint8_t index2, Math::vec3& point, const Math::vec3& direction, const Math::vec3& boxHalfExtent, float& distanceToLineOrigin) {
+	float squaredDistance = 0.0f;
+
+	distanceToLineOrigin = (boxHalfExtent[index0] - point[index0]) / direction[index0];
+
+	point[index0] = boxHalfExtent[index0];
+
+	if (point[index1] < -boxHalfExtent[index1]) {
+		const float delta = point[index1] + boxHalfExtent[index1];
+		squaredDistance += delta * delta;
+		point[index1] = -boxHalfExtent[index1];
+	}
+	else if (point[index1] > boxHalfExtent[index1]) {
+		const float delta = point[index1] - boxHalfExtent[index1];
+		squaredDistance += delta * delta;
+		point[index1] = boxHalfExtent[index1];
+	}
+
+	if (point[index2] < -boxHalfExtent[index2]) {
+		const float delta = point[index2] + boxHalfExtent[index2];
+		squaredDistance += delta * delta;
+		point[index2] = -boxHalfExtent[index2];
+	}
+	else if (point[index2] > boxHalfExtent[index2]) {
+		const float delta = point[index2] - boxHalfExtent[index2];
+		squaredDistance += delta * delta;
+		point[index2] = boxHalfExtent[index2];
+	}
+
+	return squaredDistance;
+}
+
+float NtshEngn::PhysicsModule::squaredDistanceLineBoxThree0(Math::vec3& point, const Math::vec3& boxHalfExtent) {
+	float squaredDistance = 0.0f;
+	
+	if (point.x < -boxHalfExtent.x) {
+		const float delta = point.x + boxHalfExtent.x;
+		squaredDistance += delta * delta;
+		point.x = -boxHalfExtent.x;
+	}
+	else if (point.x > boxHalfExtent.x) {
+		const float delta = point.x - boxHalfExtent.x;
+		squaredDistance += delta * delta;
+		point.x = boxHalfExtent.x;
+	}
+
+	if (point.y < -boxHalfExtent.y) {
+		const float delta = point.y + boxHalfExtent.y;
+		squaredDistance += delta * delta;
+		point.y = -boxHalfExtent.y;
+	}
+	else if (point.y > boxHalfExtent.y) {
+		const float delta = point.y - boxHalfExtent.y;
+		squaredDistance += delta * delta;
+		point.y = boxHalfExtent.y;
+	}
+
+	if (point.z < -boxHalfExtent.z) {
+		const float delta = point.z + boxHalfExtent.z;
+		squaredDistance += delta * delta;
+		point.z = -boxHalfExtent.z;
+	}
+	else if (point.z > boxHalfExtent.z) {
+		const float delta = point.z - boxHalfExtent.z;
+		squaredDistance += delta * delta;
+		point.z = boxHalfExtent.z;
+	}
+
+	return squaredDistance;
+}
+
+float NtshEngn::PhysicsModule::squaredDistanceLineBox(const Math::vec3& lineOrigin, const Math::vec3& lineDirection, const ColliderBox* box, const Math::mat4& boxRotation, float& distanceToLineOrigin, Math::vec3& linePointOnBox) {
+	const Math::vec3 xAxis = Math::vec3(boxRotation.x);
+	const Math::vec3 yAxis = Math::vec3(boxRotation.y);
+	const Math::vec3 zAxis = Math::vec3(boxRotation.z);
+
+	const Math::vec3 boxToLineOrigin = lineOrigin - box->center;
+	
+	Math::vec3 point = Math::vec3(Math::dot(xAxis, boxToLineOrigin), Math::dot(yAxis, boxToLineOrigin), Math::dot(zAxis, boxToLineOrigin));
+	Math::vec3 direction = Math::vec3(Math::dot(xAxis, lineDirection), Math::dot(yAxis, lineDirection), Math::dot(zAxis, lineDirection));
+
+	std::array<bool, 3> reflect;
+
+	for (uint8_t i = 0; i < 3; i++) {
+		if (direction[i] < 0.0f) {
+			point[i] = point[i] * -1.0f;
+			direction[i] = direction[i] * -1.0f;
+			reflect[i] = true;
+		}
+		else {
+			reflect[i] = false;
+		}
+	}
+
+	float squaredDistance;
+
+	if (direction.x > 0.0f) {
+		if (direction.y > 0.0f) {
+			if (direction.z > 0.0f) {
+				squaredDistance = squaredDistanceLineBoxNo0(point, direction, box->halfExtent, distanceToLineOrigin);
+			}
+			else {
+				squaredDistance = squaredDistanceLineBoxOne0(0, 1, 2, point, direction, box->halfExtent, distanceToLineOrigin);
+			}
+		}
+		else {
+			if (direction.z > 0.0f) {
+				squaredDistance = squaredDistanceLineBoxOne0(0, 2, 1, point, direction, box->halfExtent, distanceToLineOrigin);
+			}
+			else {
+				squaredDistance = squaredDistanceLineBoxTwo0(0, 1, 2, point, direction, box->halfExtent, distanceToLineOrigin);
+			}
+		}
+	}
+	else {
+		if (direction.y > 0.0f) {
+			if (direction.z > 0.0f) {
+				squaredDistance = squaredDistanceLineBoxOne0(1, 2, 0, point, direction, box->halfExtent, distanceToLineOrigin);
+			}
+			else {
+				squaredDistance = squaredDistanceLineBoxTwo0(1, 0, 2, point, direction, box->halfExtent, distanceToLineOrigin);
+			}
+		}
+		else {
+			if (direction.z > 0.0f) {
+				squaredDistance = squaredDistanceLineBoxTwo0(2, 0, 1, point, direction, box->halfExtent, distanceToLineOrigin);
+			}
+			else {
+				squaredDistance = squaredDistanceLineBoxThree0(point, box->halfExtent);
+				distanceToLineOrigin = 0.0f;
+			}
+		}
+	}
+
+	for (uint8_t i = 0; i < 3; i++) {
+		if (reflect[i]) {
+			point[i] = point[i] * -1.0f;
+		}
+
+		linePointOnBox = point;
+	}
+
+	return squaredDistance;
+}
+
+float NtshEngn::PhysicsModule::squaredDistancePointBox(const Math::vec3& point, const ColliderBox* box, const Math::mat4& boxRotation, Math::vec3& pointOnBox) {
+	const Math::vec3 xAxis = Math::vec3(boxRotation.x);
+	const Math::vec3 yAxis = Math::vec3(boxRotation.y);
+	const Math::vec3 zAxis = Math::vec3(boxRotation.z);
+
+	const Math::vec3 boxToPoint = point - box->center;
+
+	Math::vec3 closest = Math::vec3(Math::dot(xAxis, boxToPoint), Math::dot(yAxis, boxToPoint), Math::dot(zAxis, boxToPoint));
+
+	float squaredDistance = 0.0f;
+
+	for (uint8_t i = 0; i < 3; i++) {
+		if (closest[i] < -box->halfExtent[i]) {
+			const float delta = closest[i] + box->halfExtent[i];
+			squaredDistance += delta * delta;
+			closest[i] = -box->halfExtent[i];
+		}
+		else if (closest[i] > box->halfExtent[i]) {
+			const float delta = closest[i] - box->halfExtent[i];
+			squaredDistance += delta * delta;
+			closest[i] = box->halfExtent[i];
+		}
+	}
+
+	pointOnBox = closest;
+
+	return squaredDistance;
+}
+
+float NtshEngn::PhysicsModule::squaredDistanceSegmentBox(const Math::vec3& segmentA, const Math::vec3& segmentB, const ColliderBox* box, const Math::mat4& boxRotation, float& distanceToSegmentOrigin, Math::vec3& segmentPointOnBox) {
+	float distanceToLineOrigin;
+	Math::vec3 linePointOnBox;
+	float squaredDistance = squaredDistanceLineBox(segmentA, segmentB - segmentA, box, boxRotation, distanceToLineOrigin, linePointOnBox);
+
+	if (distanceToLineOrigin >= 0.0f) {
+		if (distanceToLineOrigin <= 1.0f) {
+			distanceToSegmentOrigin = distanceToLineOrigin;
+			segmentPointOnBox = linePointOnBox;
+
+			return squaredDistance;
+		}
+		else {
+			distanceToSegmentOrigin = 1.0f;
+
+			return squaredDistancePointBox(segmentB, box, boxRotation, segmentPointOnBox);
+		}
+	}
+	else {
+		distanceToSegmentOrigin = 0.0f;
+
+		return  squaredDistancePointBox(segmentA, box, boxRotation, segmentPointOnBox);
+	}
+}
+
+void NtshEngn::PhysicsModule::boxCapsuleIntersectionInformation(const ColliderBox* box, const Math::mat4& boxRotation, const ColliderCapsule* capsule, const Math::vec3& normal, IntersectionInformation& intersectionInformation) {
+	intersectionInformation.depth = std::numeric_limits<float>::max();
+	
+	const Math::vec3 boxMin = box->halfExtent * -1.0f;
+	const Math::vec3 boxMax = box->halfExtent;
+
+	const Math::vec3 rayDirection = Math::vec3(boxRotation * Math::vec4(normal, 0.0f)) * -1.0f;
+
+	for (uint8_t i = 0; i < 2; i++) {
+		Math::vec3 pos;
+		if (i == 0) {
+			pos = capsule->base;
+		}
+		else {
+			pos = capsule->tip;
+		}
+
+		const Math::vec3 rayOrigin = Math::vec3(boxRotation * Math::vec4(pos - box->center, 1.0f));
+
+		bool rayAABBIntersection = true;
+		float tMin = std::numeric_limits<float>::lowest();
+		float tMax = std::numeric_limits<float>::max();
+
+		for (uint8_t j = 0; j < 3; j++) {
+			if ((rayDirection[j] > -0.0001f) && (rayDirection[j] < 0.0001f)) {
+				if ((rayDirection[j] < boxMin[j]) || (rayDirection[j] > boxMax[j])) {
+					rayAABBIntersection = false;
+					break;
+				}
+			}
+			else {
+				const float invRayDirection = 1.0f / rayDirection[j];
+				float t1 = (boxMin[j] - rayOrigin[j]) * invRayDirection;
+				float t2 = (boxMax[j] - rayOrigin[j]) * invRayDirection;
+
+				if (t1 > t2) {
+					std::swap(t1, t2);
+				}
+
+				if (t1 > tMin) {
+					tMin = t1;
+				}
+				if (t2 < tMax) {
+					tMax = t2;
+				}
+
+				if ((tMin > tMax) || (tMax < 0.0001f)) {
+					rayAABBIntersection = false;
+					break;
+				}
+			}
+		}
+
+		if ((tMin > tMax) || (tMax < 0.0001f)) {
+			rayAABBIntersection = false;
+		}
+
+		if (rayAABBIntersection && (tMin < capsule->radius)) {
+			const Math::vec3 intersectionPoint = pos - (tMin * normal);
+
+			intersectionInformation.hasIntersected = true;
+			intersectionInformation.normal = normal;
+			intersectionInformation.depth = std::min(intersectionInformation.depth, -(tMin - capsule->radius));
+			intersectionInformation.relativePoints.push_back({ intersectionPoint - box->center, intersectionPoint - getCenter(capsule) });
+		}
+	}
 }
 
 std::vector<NtshEngn::Math::vec3> NtshEngn::PhysicsModule::clipEdgesToBox(const std::array<std::pair<Math::vec3, Math::vec3>, 12>& edges, const ColliderBox* box, const Math::mat4& boxRotation) {

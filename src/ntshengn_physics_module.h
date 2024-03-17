@@ -95,6 +95,17 @@ namespace NtshEngn {
 		Math::vec3 closestPointOnSegment(const Math::vec3& point, const Math::vec3& segmentA, const Math::vec3& segmentB);
 		std::pair<Math::vec3, Math::vec3> closestPointSegmentSegment(const Math::vec3& segmentA1, const Math::vec3& segmentA2, const Math::vec3& segmentB1, const Math::vec3& segmentB2);
 
+		float squaredDistanceLineBoxFace(uint8_t index0, uint8_t index1, uint8_t index2, Math::vec3& point, const Math::vec3& direction, const Math::vec3& boxHalfExtent, const Math::vec3& halfExtentToPoint, float& distanceToLineOrigin);
+		float squaredDistanceLineBoxNo0(Math::vec3& point, const Math::vec3& direction, const Math::vec3& boxHalfExtent, float& distanceToLineOrigin);
+		float squaredDistanceLineBoxOne0(uint8_t index0, uint8_t index1, uint8_t index2, Math::vec3& point, const Math::vec3& direction, const Math::vec3& boxHalfExtent, float& distanceToLineOrigin);
+		float squaredDistanceLineBoxTwo0(uint8_t index0, uint8_t index1, uint8_t index2, Math::vec3& point, const Math::vec3& direction, const Math::vec3& boxHalfExtent, float& distanceToLineOrigin);
+		float squaredDistanceLineBoxThree0(Math::vec3& point, const Math::vec3& boxHalfExtent);
+		float squaredDistanceLineBox(const Math::vec3& lineOrigin, const Math::vec3& lineDirection, const ColliderBox* box, const Math::mat4& boxRotation, float& distanceToLineOrigin, Math::vec3& linePointOnBox);
+		float squaredDistancePointBox(const Math::vec3& point, const ColliderBox* box, const Math::mat4& boxRotation, Math::vec3& pointOnBox);
+		float squaredDistanceSegmentBox(const Math::vec3& segmentA, const Math::vec3& segmentB, const ColliderBox* box, const Math::mat4& boxRotation, float& distanceToSegmentOrigin, Math::vec3& segmentPointOnBox);
+
+		void boxCapsuleIntersectionInformation(const ColliderBox* box, const Math::mat4& boxRotation, const ColliderCapsule* capsule, const Math::vec3& normal, IntersectionInformation& intersectionInformation);
+
 		std::vector<Math::vec3> clipEdgesToBox(const std::array<std::pair<Math::vec3, Math::vec3>, 12>& edges, const ColliderBox* box, const Math::mat4& boxRotation);
 
 	private:
