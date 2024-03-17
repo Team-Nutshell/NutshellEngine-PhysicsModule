@@ -1607,7 +1607,7 @@ float NtshEngn::PhysicsModule::squaredDistanceSegmentBox(const Math::vec3& segme
 	else {
 		distanceToSegmentOrigin = 0.0f;
 
-		return  squaredDistancePointBox(segmentA, box, boxRotation, segmentPointOnBox);
+		return squaredDistancePointBox(segmentA, box, boxRotation, segmentPointOnBox);
 	}
 }
 
