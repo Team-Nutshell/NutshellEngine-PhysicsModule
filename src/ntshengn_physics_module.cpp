@@ -377,7 +377,9 @@ void NtshEngn::PhysicsModule::collisionsResponse() {
 
 			if (!entity2Rigidbody.isStatic) {
 				entity2LinearVelocityDelta += invMass2 * impulse;
-				entity2AngularVelocityDelta += invInertia2 * Math::cross(collision.relativeIntersectionPoints[i].second, impulse);
+				if (!entity2Rigidbody.lockRotation) {
+					entity2AngularVelocityDelta += invInertia2 * Math::cross(collision.relativeIntersectionPoints[i].second, impulse);
+				}
 
 				objectStates[collision.entity2].linearVelocity += entity2LinearVelocityDelta;
 				objectStates[collision.entity2].angularVelocity += entity2AngularVelocityDelta;
@@ -465,7 +467,7 @@ void NtshEngn::PhysicsModule::collisionsResponse() {
 		if (ecs->entityExists(collisionEnter.entity2) && ecs->hasComponent<Scriptable>(collisionEnter.entity2)) {
 			CollisionInfo collisionInfo;
 			collisionInfo.otherEntity = collisionEnter.entity1;
-			collisionInfo.normal = collisionEnter.intersectionNormal * -1.0f;
+			collisionInfo.normal = -collisionEnter.intersectionNormal;
 			collisionInfo.depth = collisionEnter.intersectionDepth;
 
 			for (const std::pair<Math::vec3, Math::vec3>& relativePoint : collisionEnter.relativeIntersectionPoints) {
@@ -496,7 +498,7 @@ void NtshEngn::PhysicsModule::collisionsResponse() {
 		if (ecs->entityExists(collisionStill.entity2) && ecs->hasComponent<Scriptable>(collisionStill.entity2)) {
 			CollisionInfo collisionInfo;
 			collisionInfo.otherEntity = collisionStill.entity1;
-			collisionInfo.normal = collisionStill.intersectionNormal * -1.0f;
+			collisionInfo.normal = -collisionStill.intersectionNormal;
 			collisionInfo.depth = collisionStill.intersectionDepth;
 
 			for (const std::pair<Math::vec3, Math::vec3>& relativePoint : collisionStill.relativeIntersectionPoints) {
@@ -527,7 +529,7 @@ void NtshEngn::PhysicsModule::collisionsResponse() {
 		if (ecs->entityExists(collisionExit.entity2) && ecs->hasComponent<Scriptable>(collisionExit.entity2)) {
 			CollisionInfo collisionInfo;
 			collisionInfo.otherEntity = collisionExit.entity1;
-			collisionInfo.normal = collisionExit.intersectionNormal * -1.0f;
+			collisionInfo.normal = -collisionExit.intersectionNormal;
 			collisionInfo.depth = collisionExit.intersectionDepth;
 
 			for (const std::pair<Math::vec3, Math::vec3>& relativePoint : collisionExit.relativeIntersectionPoints) {
@@ -930,7 +932,7 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 	}
 
 	const Math::vec3 intersectionNormal = Math::normalize(sphere->center - closestPoint);
-	const Math::vec3 outsidePoint = (intersectionNormal * -1.0f) * sphere->radius;
+	const Math::vec3 outsidePoint = -intersectionNormal * sphere->radius;
 
 	intersectionInformation.hasIntersected = true;
 	intersectionInformation.normal = intersectionNormal;
@@ -988,7 +990,7 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 	intersectionInformation.hasIntersected = true;
 	intersectionInformation.normal = Math::normalize(centerDiff);
 	intersectionInformation.depth = (sphere1->radius + sphere2->radius) - centerDiffLength;
-	intersectionInformation.relativePoints = { { intersectionInformation.normal * sphere1->radius, (intersectionInformation.normal * -1.0f) * sphere2->radius } };
+	intersectionInformation.relativePoints = { { intersectionInformation.normal * sphere1->radius, -intersectionInformation.normal * sphere2->radius } };
 
 	return intersectionInformation;
 }
@@ -1018,7 +1020,7 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderCapsule* capsule, const ColliderSphere* sphere) {
 	IntersectionInformation intersectionInformation = intersect(sphere, capsule);
 	if (intersectionInformation.hasIntersected) {
-		intersectionInformation.normal = intersectionInformation.normal * -1.0f;
+		intersectionInformation.normal = -intersectionInformation.normal;
 		for (size_t i = 0; i < intersectionInformation.relativePoints.size(); i++) {
 			std::swap(intersectionInformation.relativePoints[i].first, intersectionInformation.relativePoints[i].second);
 		}
@@ -1030,7 +1032,7 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderSphere* sphere, const ColliderBox* box) {
 	IntersectionInformation intersectionInformation = intersect(box, sphere);
 	if (intersectionInformation.hasIntersected) {
-		intersectionInformation.normal = intersectionInformation.normal * -1.0f;
+		intersectionInformation.normal = -intersectionInformation.normal;
 		for (size_t i = 0; i < intersectionInformation.relativePoints.size(); i++) {
 			std::swap(intersectionInformation.relativePoints[i].first, intersectionInformation.relativePoints[i].second);
 		}
@@ -1042,7 +1044,7 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderCapsule* capsule, const ColliderBox* box) {
 	IntersectionInformation intersectionInformation = intersect(box, capsule);
 	if (intersectionInformation.hasIntersected) {
-		intersectionInformation.normal = intersectionInformation.normal * -1.0f;
+		intersectionInformation.normal = -intersectionInformation.normal;
 		for (size_t i = 0; i < intersectionInformation.relativePoints.size(); i++) {
 			std::swap(intersectionInformation.relativePoints[i].first, intersectionInformation.relativePoints[i].second);
 		}
@@ -1497,8 +1499,8 @@ float NtshEngn::PhysicsModule::squaredDistanceLineBox(const Math::vec3& lineOrig
 
 	for (uint8_t i = 0; i < 3; i++) {
 		if (direction[i] < 0.0f) {
-			point[i] = point[i] * -1.0f;
-			direction[i] = direction[i] * -1.0f;
+			point[i] = -point[i];
+			direction[i] = -direction[i];
 			reflect[i] = true;
 		}
 		else {
@@ -1548,7 +1550,7 @@ float NtshEngn::PhysicsModule::squaredDistanceLineBox(const Math::vec3& lineOrig
 
 	for (uint8_t i = 0; i < 3; i++) {
 		if (reflect[i]) {
-			point[i] = point[i] * -1.0f;
+			point[i] = -point[i];
 		}
 
 		linePointOnBox = point;
@@ -1614,10 +1616,10 @@ float NtshEngn::PhysicsModule::squaredDistanceSegmentBox(const Math::vec3& segme
 void NtshEngn::PhysicsModule::boxCapsuleIntersectionInformation(const ColliderBox* box, const Math::mat4& boxRotation, const ColliderCapsule* capsule, const Math::vec3& normal, IntersectionInformation& intersectionInformation) {
 	intersectionInformation.depth = std::numeric_limits<float>::max();
 	
-	const Math::vec3 boxMin = box->halfExtent * -1.0f;
+	const Math::vec3 boxMin = -box->halfExtent;
 	const Math::vec3 boxMax = box->halfExtent;
 
-	const Math::vec3 rayDirection = Math::vec3(boxRotation * Math::vec4(normal, 0.0f)) * -1.0f;
+	const Math::vec3 rayDirection = -Math::vec3(boxRotation * Math::vec4(normal, 0.0f));
 
 	for (uint8_t i = 0; i < 2; i++) {
 		Math::vec3 pos;
@@ -1673,7 +1675,7 @@ void NtshEngn::PhysicsModule::boxCapsuleIntersectionInformation(const ColliderBo
 
 			intersectionInformation.hasIntersected = true;
 			intersectionInformation.normal = normal;
-			intersectionInformation.depth = std::min(intersectionInformation.depth, -(tMin - capsule->radius));
+			intersectionInformation.depth = std::min(intersectionInformation.depth, capsule->radius - tMin);
 			intersectionInformation.relativePoints.push_back({ intersectionPoint - box->center, intersectionPoint - getCenter(capsule) });
 		}
 	}
@@ -1691,7 +1693,7 @@ std::vector<NtshEngn::Math::vec3> NtshEngn::PhysicsModule::clipEdgesToBox(const 
 			planeDistance = Math::dot(boxRotation[i / 2], (box->center + (boxRotation[i / 2] * box->halfExtent[i / 2])));
 		}
 		else {
-			planeAxis = boxRotation[i / 2] * -1.0f;
+			planeAxis = -boxRotation[i / 2];
 			planeDistance = -Math::dot(boxRotation[i / 2], (box->center - (boxRotation[i / 2] * box->halfExtent[i / 2])));
 		}
 
