@@ -1193,8 +1193,8 @@ float NtshEngn::PhysicsModule::squaredDistanceLineBoxFace(uint8_t index0, uint8_
 	float squaredDistance = 0.0f;
 
 	Math::vec3 pointPlusHalfExtent;
-	pointPlusHalfExtent[index1] = point[index1] + boxHalfExtent[1];
-	pointPlusHalfExtent[index2] = point[index2] + boxHalfExtent[2];
+	pointPlusHalfExtent[index1] = point[index1] + boxHalfExtent[index1];
+	pointPlusHalfExtent[index2] = point[index2] + boxHalfExtent[index2];
 
 	if ((direction[index0] * pointPlusHalfExtent[index1]) >= (direction[index1] * halfExtentToPoint[index0])) {
 		if ((direction[index0] * pointPlusHalfExtent[index2]) >= (direction[index2] * halfExtentToPoint[index0])) {
@@ -1327,12 +1327,12 @@ float NtshEngn::PhysicsModule::squaredDistanceLineBoxNo0(Math::vec3& point, cons
 	
 	const Math::vec3 halfExtentToPoint = point - boxHalfExtent;
 
-	float productDirXHetpY = direction.x * halfExtentToPoint.y;
-	float productDirYHetpX = direction.y * halfExtentToPoint.x;
+	const float productDirXHetpY = direction.x * halfExtentToPoint.y;
+	const float productDirYHetpX = direction.y * halfExtentToPoint.x;
 	
 	if (productDirXHetpY >= productDirYHetpX) {
-		float productDirZHetpX = direction.z * halfExtentToPoint.x;
-		float productDirXHetpZ = direction.x * halfExtentToPoint.z;
+		const float productDirZHetpX = direction.z * halfExtentToPoint.x;
+		const float productDirXHetpZ = direction.x * halfExtentToPoint.z;
 
 		if (productDirZHetpX >= productDirXHetpZ) {
 			squaredDistance = squaredDistanceLineBoxFace(0, 1, 2, point, direction, boxHalfExtent, halfExtentToPoint, distanceToLineOrigin);
@@ -1342,8 +1342,8 @@ float NtshEngn::PhysicsModule::squaredDistanceLineBoxNo0(Math::vec3& point, cons
 		}
 	}
 	else {
-		float productDirZHetpY = direction.z * halfExtentToPoint.y;
-		float productDirYHetpZ = direction.y * halfExtentToPoint.z;
+		const float productDirZHetpY = direction.z * halfExtentToPoint.y;
+		const float productDirYHetpZ = direction.y * halfExtentToPoint.z;
 
 		if (productDirZHetpY >= productDirYHetpZ) {
 			squaredDistance = squaredDistanceLineBoxFace(1, 2, 0, point, direction, boxHalfExtent, halfExtentToPoint, distanceToLineOrigin);
@@ -1374,7 +1374,7 @@ float NtshEngn::PhysicsModule::squaredDistanceLineBoxOne0(uint8_t index0, uint8_
 			const float invLSquare = 1.0f / ((direction[index0] * direction[index0]) + (direction[index1] * direction[index1]));
 			squaredDistance += delta * delta * invLSquare;
 			point[index1] = -boxHalfExtent[index1];
-			distanceToLineOrigin = -((point[0] * halfExtentToPoint0) + (point[1] * halfExtentToPoint1)) * invLSquare;
+			distanceToLineOrigin = -((direction[index0] * halfExtentToPoint0) + (direction[index1] * halfExtentPlusPoint1)) * invLSquare;
 		}
 		else {
 			const float inv = 1.0f / direction[index0];
@@ -1391,7 +1391,7 @@ float NtshEngn::PhysicsModule::squaredDistanceLineBoxOne0(uint8_t index0, uint8_
 			const float invLSquare = 1.0f / ((direction[index0] * direction[index0]) + (direction[index1] * direction[index1]));
 			squaredDistance += delta * delta * invLSquare;
 			point[index0] = -boxHalfExtent[index0];
-			distanceToLineOrigin = -((point[0] * halfExtentToPoint0) + (point[1] * halfExtentToPoint1)) * invLSquare;
+			distanceToLineOrigin = -((direction[index0] * halfExtentPlusPoint0) + (direction[index1] * halfExtentToPoint1)) * invLSquare;
 		}
 		else {
 			const float inv = 1.0f / direction[index1];
@@ -1406,9 +1406,9 @@ float NtshEngn::PhysicsModule::squaredDistanceLineBoxOne0(uint8_t index0, uint8_
 		point[index2] = -boxHalfExtent[index2];
 	}
 	else if (point[index2] > boxHalfExtent[index2]) {
-		const float delta = point[index2] + boxHalfExtent[index2];
+		const float delta = point[index2] - boxHalfExtent[index2];
 		squaredDistance += delta * delta;
-		point[index2] = -boxHalfExtent[index2];
+		point[index2] = boxHalfExtent[index2];
 	}
 
 	return squaredDistance;
