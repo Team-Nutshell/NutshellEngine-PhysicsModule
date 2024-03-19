@@ -22,20 +22,28 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 	NTSHENGN_UNUSED(shape2);
 	NTSHENGN_MODULE_FUNCTION_NOT_IMPLEMENTED();
 
-	IntersectionInformation intersectionInformation;
-	intersectionInformation.hasIntersected = false;
-
-	return intersectionInformation;
+	return IntersectionInformation();
 }
 
-std::vector<NtshEngn::RaycastInformation> NtshEngn::PhysicsModule::raycast(const Math::vec3& rayOrigin, const Math::vec3& rayDirection, float tMin, float tMax) {
+NtshEngn::RaycastInformation NtshEngn::PhysicsModule::raycast(const Math::vec3& rayOrigin, const Math::vec3& rayDirection, float tMin, float tMax, const ColliderShape* shape) {
+	NTSHENGN_UNUSED(rayOrigin);
+	NTSHENGN_UNUSED(rayDirection);
+	NTSHENGN_UNUSED(tMin);
+	NTSHENGN_UNUSED(tMax);
+	NTSHENGN_UNUSED(shape);
+	NTSHENGN_MODULE_FUNCTION_NOT_IMPLEMENTED();
+
+	return RaycastInformation();
+}
+
+std::vector<std::pair<NtshEngn::Entity, NtshEngn::RaycastInformation>> NtshEngn::PhysicsModule::raycastAll(const Math::vec3& rayOrigin, const Math::vec3& rayDirection, float tMin, float tMax) {
 	NTSHENGN_UNUSED(rayOrigin);
 	NTSHENGN_UNUSED(rayDirection);
 	NTSHENGN_UNUSED(tMin);
 	NTSHENGN_UNUSED(tMax);
 	NTSHENGN_MODULE_FUNCTION_NOT_IMPLEMENTED();
 
-	return std::vector<NtshEngn::RaycastInformation>();
+	return std::vector<std::pair<Entity, RaycastInformation>>();
 }
 
 extern "C" NTSHENGN_MODULE_API NtshEngn::PhysicsModuleInterface* createModule() {
