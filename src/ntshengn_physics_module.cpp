@@ -69,8 +69,22 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 	return IntersectionInformation();
 }
 
-std::vector<NtshEngn::RaycastInformation> NtshEngn::PhysicsModule::raycast(const Math::vec3& rayOrigin, const Math::vec3& rayDirection, float tMin, float tMax) {
-	std::vector<RaycastInformation> raycastInformations;
+NtshEngn::RaycastInformation NtshEngn::PhysicsModule::raycast(const Math::vec3& rayOrigin, const Math::vec3& rayDirection, float tMin, float tMax, const ColliderShape* shape) {
+	if (shape->getType() == ColliderShapeType::Box) {
+		return raycast(rayOrigin, rayDirection, tMin, tMax, static_cast<const ColliderBox*>(shape));
+	}
+	else if (shape->getType() == ColliderShapeType::Sphere) {
+		return raycast(rayOrigin, rayDirection, tMin, tMax, static_cast<const ColliderSphere*>(shape));
+	}
+	else if (shape->getType() == ColliderShapeType::Capsule) {
+		return raycast(rayOrigin, rayDirection, tMin, tMax, static_cast<const ColliderCapsule*>(shape));
+	}
+
+	return RaycastInformation();
+}
+
+std::vector<std::pair<NtshEngn::Entity, NtshEngn::RaycastInformation>> NtshEngn::PhysicsModule::raycastAll(const Math::vec3& rayOrigin, const Math::vec3& rayDirection, float tMin, float tMax) {
+	std::vector<std::pair<Entity, RaycastInformation>> raycastInformations;
 
 	const Math::vec3 invRayDirection = Math::vec3(1.0f / rayDirection.x, 1.0f / rayDirection.y, 1.0f / rayDirection.z);
 
@@ -84,152 +98,34 @@ std::vector<NtshEngn::RaycastInformation> NtshEngn::PhysicsModule::raycast(const
 				ColliderBox* colliderBox = static_cast<ColliderBox*>(collidable.collider.get());
 				transform(colliderBox, entityTransform.position, entityTransform.rotation, entityTransform.scale);
 
-				const Math::mat4 boxRotation = Math::rotate(colliderBox->rotation.x, Math::vec3(1.0f, 0.0f, 0.0f)) *
-					Math::rotate(colliderBox->rotation.y, Math::vec3(0.0f, 1.0f, 0.0f)) *
-					Math::rotate(colliderBox->rotation.z, Math::vec3(0.0f, 0.0f, 1.0f));
-
-				const Math::vec3 rayToBox = colliderBox->center - rayOrigin;
-
-				Math::vec3 rayDirectionProjected = Math::vec3(Math::dot(boxRotation.x, rayDirection),
-					Math::dot(boxRotation.y, rayDirection),
-					Math::dot(boxRotation.z, rayDirection));
-
-				const Math::vec3 rayToBoxProjected = Math::vec3(Math::dot(boxRotation.x, rayToBox),
-					Math::dot(boxRotation.y, rayToBox),
-					Math::dot(boxRotation.z, rayToBox));
-
-				bool noIntersection = false;
-				std::array<float, 6> t = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
-				for (uint8_t i = 0; i < 3; i++) {
-					if (rayDirectionProjected[i] == 0.0f) {
-						if (((-rayToBoxProjected[i] - colliderBox->halfExtent[i]) > 0.0f) || ((-rayToBoxProjected[i] + colliderBox->halfExtent[i]) < 0.0f)) {
-							noIntersection = true;
-							break;
-						}
-						rayDirectionProjected[i] = 0.000001f;
-					}
-
-					t[(i * 2) + 0] = (rayToBoxProjected[i] + colliderBox->halfExtent[i]) / rayDirectionProjected[i];
-					t[(i * 2) + 1] = (rayToBoxProjected[i] - colliderBox->halfExtent[i]) / rayDirectionProjected[i];
-				}
-
-				if (noIntersection) {
-					continue;
-				}
-
-				const Math::mat4 boxInverseTransform = Math::transpose(Math::inverse(Math::translate(colliderBox->center) *
-					boxRotation *
-					Math::scale(colliderBox->halfExtent)));
-
-				const float distanceMin = std::max(std::max(std::min(t[0], t[1]), std::min(t[2], t[3])), std::min(t[4], t[5]));
-				const float distanceMax = std::min(std::min(std::max(t[0], t[1]), std::max(t[2], t[3])), std::max(t[4], t[5]));
-				if ((distanceMax >= 0.0f) && (distanceMin <= distanceMax) && ((distanceMin >= tMin) && (distanceMin <= tMax))) {
-					Math::vec3 normal;
-					if (distanceMin == t[0]) {
-						normal = Math::normalize(Math::vec3(boxInverseTransform * Math::vec4(Math::vec3(-1.0f, 0.0f, 0.0f), 0.0f)));
-					}
-					else if (distanceMin == t[1]) {
-						normal = Math::normalize(Math::vec3(boxInverseTransform * Math::vec4(Math::vec3(1.0f, 0.0f, 0.0f), 0.0f)));
-					}
-					else if (distanceMin == t[2]) {
-						normal = Math::normalize(Math::vec3(boxInverseTransform * Math::vec4(Math::vec3(0.0f, -1.0f, 0.0f), 0.0f)));
-					}
-					else if (distanceMin == t[3]) {
-						normal = Math::normalize(Math::vec3(boxInverseTransform * Math::vec4(Math::vec3(0.0f, 1.0f, 0.0f), 0.0f)));
-					}
-					else if (distanceMin == t[4]) {
-						normal = Math::normalize(Math::vec3(boxInverseTransform * Math::vec4(Math::vec3(0.0f, 0.0f, -1.0f), 0.0f)));
-					}
-					else if (distanceMin == t[5]) {
-						normal = Math::normalize(Math::vec3(boxInverseTransform * Math::vec4(Math::vec3(0.0f, 0.0f, 1.0f), 0.0f)));
-					}
-
-					RaycastInformation raycastInformation;
-					raycastInformation.entity = entity;
-					raycastInformation.distance = distanceMin;
-					raycastInformation.normal = normal;
-					raycastInformations.push_back(raycastInformation);
+				RaycastInformation raycastInformation = raycast(rayOrigin, rayDirection, tMin, tMax, colliderBox);
+				if (raycastInformation.hasIntersected) {
+					raycastInformations.push_back({ entity, raycastInformation });
 				}
 			}
 			else if (collidable.collider->getType() == ColliderShapeType::Sphere) {
 				ColliderSphere* colliderSphere = static_cast<ColliderSphere*>(collidable.collider.get());
 				transform(colliderSphere, entityTransform.position, entityTransform.rotation, entityTransform.scale);
 
-				const Math::vec3 co = rayOrigin - colliderSphere->center;
-				const float a = Math::dot(rayDirection, rayDirection);
-				const float b = 2.0f * Math::dot(co, rayDirection);
-				const float c = Math::dot(co, co) - (colliderSphere->radius * colliderSphere->radius);
-				const float discriminant = (b * b) - (4.0f * a * c);
-
-				if (discriminant < 0.0f) {
-					continue;
-				}
-
-				const float distance = (-b - (std::sqrt(discriminant))) / (2.0f * a);
-				if ((distance >= tMin) && (distance <= tMax)) {
-					RaycastInformation raycastInformation;
-					raycastInformation.entity = entity;
-					raycastInformation.distance = distance;
-					raycastInformation.normal = Math::normalize((rayOrigin + (rayDirection * distance)) - colliderSphere->center);
-					raycastInformations.push_back(raycastInformation);
+				RaycastInformation raycastInformation = raycast(rayOrigin, rayDirection, tMin, tMax, colliderSphere);
+				if (raycastInformation.hasIntersected) {
+					raycastInformations.push_back({ entity, raycastInformation });
 				}
 			}
 			else if (collidable.collider->getType() == ColliderShapeType::Capsule) {
 				ColliderCapsule* colliderCapsule = static_cast<ColliderCapsule*>(collidable.collider.get());
 				transform(colliderCapsule, entityTransform.position, entityTransform.rotation, entityTransform.scale);
 
-				const Math::vec3 ab = colliderCapsule->tip - colliderCapsule->base;
-				const Math::vec3 ao = rayOrigin - colliderCapsule->base;
-
-				const float abab = Math::dot(ab, ab);
-				const float aoao = Math::dot(ao, ao);
-				const float abrd = Math::dot(ab, rayDirection);
-				const float abao = Math::dot(ab, ao);
-				const float rdao = Math::dot(rayDirection, ao);
-
-				const float a = abab - (abrd * abrd);
-				float b = (abab * rdao) - (abao * abrd);
-				float c = (abab * aoao) - (abao * abao) - (colliderCapsule->radius * colliderCapsule->radius * abab);
-				float h = (b * b) - (a * c);
-				if (h >= 0.0f) {
-					float distance = (-b - std::sqrt(h)) / a;
-					const float y = abao + (distance * abrd);
-					if ((y > 0.0) && (y < abab) && ((distance >= tMin) && (distance <= tMax))) {
-						const Math::vec3 position = rayOrigin + (rayDirection * distance);
-						const Math::vec3 ap = position - colliderCapsule->base;
-
-						RaycastInformation raycastInformation;
-						raycastInformation.entity = entity;
-						raycastInformation.distance = distance;
-						raycastInformation.normal = (ap - (ab * std::clamp(Math::dot(ap, ab) / Math::dot(ab, ab), 0.0f, 1.0f))) / colliderCapsule->radius;
-						raycastInformations.push_back(raycastInformation);
-
-						continue;
-					}
-
-					const Math::vec3 co = (y <= 0.0f) ? ao : (rayOrigin - colliderCapsule->tip);
-					b = Math::dot(rayDirection, co);
-					c = Math::dot(co, co) - (colliderCapsule->radius * colliderCapsule->radius);
-
-					h = (b * b) - c;
-					distance = -b - std::sqrt(h);
-					if ((h > 0.0f) && ((distance >= tMin) && (distance <= tMax))) {
-						const Math::vec3 position = rayOrigin + (rayDirection * distance);
-						const Math::vec3 ap = position - colliderCapsule->base;
-
-						RaycastInformation raycastInformation;
-						raycastInformation.entity = entity;
-						raycastInformation.distance = distance;
-						raycastInformation.normal = (ap - (ab * std::clamp(Math::dot(ap, ab) / Math::dot(ab, ab), 0.0f, 1.0f))) / colliderCapsule->radius;
-						raycastInformations.push_back(raycastInformation);
-					}
+				RaycastInformation raycastInformation = raycast(rayOrigin, rayDirection, tMin, tMax, colliderCapsule);
+				if (raycastInformation.hasIntersected) {
+					raycastInformations.push_back({ entity, raycastInformation });
 				}
 			}
 		}
 	}
 
-	std::sort(raycastInformations.begin(), raycastInformations.end(), [](RaycastInformation raycastInformationA, RaycastInformation raycastInformationB) {
-		return raycastInformationA.distance < raycastInformationB.distance;
+	std::sort(raycastInformations.begin(), raycastInformations.end(), [](std::pair<Entity, RaycastInformation> raycastInformationA, std::pair<Entity, RaycastInformation> raycastInformationB) {
+		return raycastInformationA.second.distance < raycastInformationB.second.distance;
 		});
 
 	return raycastInformations;
@@ -852,8 +748,6 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 		}
 
 		if ((box2IntervalMin > box1IntervalMax) || (box1IntervalMin > box2IntervalMax)) {
-			intersectionInformation.hasIntersected = false;
-
 			return intersectionInformation;
 		}
 
@@ -926,8 +820,6 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 	const float distance = (sphere->center - closestPoint).length();
 
 	if ((distance < 0.000001f) || (distance >= sphere->radius)) {
-		intersectionInformation.hasIntersected = false;
-
 		return intersectionInformation;
 	}
 
@@ -953,8 +845,6 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 	Math::vec3 pointOnBox;
 	const float squaredDistance = squaredDistanceSegmentBox(capsule->base, capsule->tip, box, boxRotation, distanceToSegmentOrigin, pointOnBox);
 	if (squaredDistance >= (capsule->radius * capsule->radius)) {
-		intersectionInformation.hasIntersected = false;
-
 		return intersectionInformation;
 	}
 
@@ -995,8 +885,6 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 	const float centerDiffLength = centerDiff.length();
 
 	if ((centerDiffLength < 0.000001f) || (centerDiffLength >= (sphere1->radius + sphere2->radius))) {
-		intersectionInformation.hasIntersected = false;
-
 		return intersectionInformation;
 	}
 
@@ -1844,6 +1732,143 @@ std::vector<NtshEngn::Math::vec3> NtshEngn::PhysicsModule::clipEdgesToBox(const 
 	}
 
 	return intersectionPoints;
+}
+
+NtshEngn::RaycastInformation NtshEngn::PhysicsModule::raycast(const Math::vec3& rayOrigin, const Math::vec3& rayDirection, float tMin, float tMax, const ColliderBox* box) {
+	RaycastInformation raycastInformation;
+
+	const Math::mat4 boxRotation = Math::rotate(box->rotation.x, Math::vec3(1.0f, 0.0f, 0.0f)) *
+		Math::rotate(box->rotation.y, Math::vec3(0.0f, 1.0f, 0.0f)) *
+		Math::rotate(box->rotation.z, Math::vec3(0.0f, 0.0f, 1.0f));
+
+	const Math::vec3 rayToBox = box->center - rayOrigin;
+
+	Math::vec3 rayDirectionProjected = Math::vec3(Math::dot(boxRotation.x, rayDirection),
+		Math::dot(boxRotation.y, rayDirection),
+		Math::dot(boxRotation.z, rayDirection));
+
+	const Math::vec3 rayToBoxProjected = Math::vec3(Math::dot(boxRotation.x, rayToBox),
+		Math::dot(boxRotation.y, rayToBox),
+		Math::dot(boxRotation.z, rayToBox));
+
+	std::array<float, 6> t = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
+	for (uint8_t i = 0; i < 3; i++) {
+		if (rayDirectionProjected[i] == 0.0f) {
+			if (((-rayToBoxProjected[i] - box->halfExtent[i]) > 0.0f) || ((-rayToBoxProjected[i] + box->halfExtent[i]) < 0.0f)) {
+				return raycastInformation;
+			}
+			rayDirectionProjected[i] = 0.000001f;
+		}
+
+		t[(i * 2) + 0] = (rayToBoxProjected[i] + box->halfExtent[i]) / rayDirectionProjected[i];
+		t[(i * 2) + 1] = (rayToBoxProjected[i] - box->halfExtent[i]) / rayDirectionProjected[i];
+	}
+
+	const Math::mat4 boxInverseTransform = Math::transpose(Math::inverse(Math::translate(box->center) *
+		boxRotation *
+		Math::scale(box->halfExtent)));
+
+	const float distanceMin = std::max(std::max(std::min(t[0], t[1]), std::min(t[2], t[3])), std::min(t[4], t[5]));
+	const float distanceMax = std::min(std::min(std::max(t[0], t[1]), std::max(t[2], t[3])), std::max(t[4], t[5]));
+	if ((distanceMax >= 0.0f) && (distanceMin <= distanceMax) && ((distanceMin >= tMin) && (distanceMin <= tMax))) {
+		Math::vec3 normal;
+		if (distanceMin == t[0]) {
+			normal = Math::normalize(Math::vec3(boxInverseTransform * Math::vec4(Math::vec3(-1.0f, 0.0f, 0.0f), 0.0f)));
+		}
+		else if (distanceMin == t[1]) {
+			normal = Math::normalize(Math::vec3(boxInverseTransform * Math::vec4(Math::vec3(1.0f, 0.0f, 0.0f), 0.0f)));
+		}
+		else if (distanceMin == t[2]) {
+			normal = Math::normalize(Math::vec3(boxInverseTransform * Math::vec4(Math::vec3(0.0f, -1.0f, 0.0f), 0.0f)));
+		}
+		else if (distanceMin == t[3]) {
+			normal = Math::normalize(Math::vec3(boxInverseTransform * Math::vec4(Math::vec3(0.0f, 1.0f, 0.0f), 0.0f)));
+		}
+		else if (distanceMin == t[4]) {
+			normal = Math::normalize(Math::vec3(boxInverseTransform * Math::vec4(Math::vec3(0.0f, 0.0f, -1.0f), 0.0f)));
+		}
+		else if (distanceMin == t[5]) {
+			normal = Math::normalize(Math::vec3(boxInverseTransform * Math::vec4(Math::vec3(0.0f, 0.0f, 1.0f), 0.0f)));
+		}
+
+		raycastInformation.hasIntersected = true;
+		raycastInformation.distance = distanceMin;
+		raycastInformation.normal = normal;
+	}
+
+	return raycastInformation;
+}
+
+NtshEngn::RaycastInformation NtshEngn::PhysicsModule::raycast(const Math::vec3& rayOrigin, const Math::vec3& rayDirection, float tMin, float tMax, const ColliderSphere* sphere) {
+	RaycastInformation raycastInformation;
+
+	const Math::vec3 co = rayOrigin - sphere->center;
+	const float a = Math::dot(rayDirection, rayDirection);
+	const float b = 2.0f * Math::dot(co, rayDirection);
+	const float c = Math::dot(co, co) - (sphere->radius * sphere->radius);
+	const float discriminant = (b * b) - (4.0f * a * c);
+
+	if (discriminant < 0.0f) {
+		return raycastInformation;
+	}
+
+	const float distance = (-b - (std::sqrt(discriminant))) / (2.0f * a);
+	if ((distance >= tMin) && (distance <= tMax)) {
+		raycastInformation.hasIntersected = true;
+		raycastInformation.distance = distance;
+		raycastInformation.normal = Math::normalize((rayOrigin + (rayDirection * distance)) - sphere->center);
+	}
+
+	return raycastInformation;
+}
+
+NtshEngn::RaycastInformation NtshEngn::PhysicsModule::raycast(const Math::vec3& rayOrigin, const Math::vec3& rayDirection, float tMin, float tMax, const ColliderCapsule* capsule) {
+	RaycastInformation raycastInformation;
+
+	const Math::vec3 ab = capsule->tip - capsule->base;
+	const Math::vec3 ao = rayOrigin - capsule->base;
+
+	const float abab = Math::dot(ab, ab);
+	const float aoao = Math::dot(ao, ao);
+	const float abrd = Math::dot(ab, rayDirection);
+	const float abao = Math::dot(ab, ao);
+	const float rdao = Math::dot(rayDirection, ao);
+
+	const float a = abab - (abrd * abrd);
+	float b = (abab * rdao) - (abao * abrd);
+	float c = (abab * aoao) - (abao * abao) - (capsule->radius * capsule->radius * abab);
+	float h = (b * b) - (a * c);
+	if (h >= 0.0f) {
+		float distance = (-b - std::sqrt(h)) / a;
+		const float y = abao + (distance * abrd);
+		if ((y > 0.0) && (y < abab) && ((distance >= tMin) && (distance <= tMax))) {
+			const Math::vec3 position = rayOrigin + (rayDirection * distance);
+			const Math::vec3 ap = position - capsule->base;
+
+			raycastInformation.hasIntersected = true;
+			raycastInformation.distance = distance;
+			raycastInformation.normal = (ap - (ab * std::clamp(Math::dot(ap, ab) / Math::dot(ab, ab), 0.0f, 1.0f))) / capsule->radius;
+
+			return raycastInformation;
+		}
+
+		const Math::vec3 co = (y <= 0.0f) ? ao : (rayOrigin - capsule->tip);
+		b = Math::dot(rayDirection, co);
+		c = Math::dot(co, co) - (capsule->radius * capsule->radius);
+
+		h = (b * b) - c;
+		distance = -b - std::sqrt(h);
+		if ((h > 0.0f) && ((distance >= tMin) && (distance <= tMax))) {
+			const Math::vec3 position = rayOrigin + (rayDirection * distance);
+			const Math::vec3 ap = position - capsule->base;
+
+			raycastInformation.hasIntersected = true;
+			raycastInformation.distance = distance;
+			raycastInformation.normal = (ap - (ab * std::clamp(Math::dot(ap, ab) / Math::dot(ab, ab), 0.0f, 1.0f))) / capsule->radius;
+		}
+	}
+
+	return raycastInformation;
 }
 
 extern "C" NTSHENGN_MODULE_API NtshEngn::PhysicsModuleInterface* createModule() {

@@ -57,8 +57,10 @@ namespace NtshEngn {
 		// Returns an IntersectionInformation structure containing information about the intersection
 		IntersectionInformation intersect(const ColliderShape* shape1, const ColliderShape* shape2);
 
+		// Returns a RaycastInformation structure containinng informationn about the raycast
+		RaycastInformation raycast(const Math::vec3& rayOrigin, const Math::vec3& rayDirection, float tMin, float tMax, const ColliderShape* shape);
 		// Returns a list of RaycastInformation structures containing information about the hit entities
-		std::vector<RaycastInformation> raycast(const Math::vec3& rayOrigin, const Math::vec3& rayDirection, float tMin, float tMax);
+		std::vector<std::pair<Entity, RaycastInformation>> raycastAll(const Math::vec3& rayOrigin, const Math::vec3& rayDirection, float tMin, float tMax);
 
 	public:
 		const ComponentMask getComponentMask() const;
@@ -108,6 +110,10 @@ namespace NtshEngn {
 		void boxCapsuleIntersectionInformationEdge(const ColliderBox* box, const Math::mat4& boxRotation, const ColliderCapsule* capsule, const Math::vec3& normal, IntersectionInformation& intersectionInformation);
 
 		std::vector<Math::vec3> clipEdgesToBox(const std::array<std::pair<Math::vec3, Math::vec3>, 12>& edges, const ColliderBox* box, const Math::mat4& boxRotation);
+
+		RaycastInformation raycast(const Math::vec3& rayOrigin, const Math::vec3& rayDirection, float tMin, float tMax, const ColliderBox* box);
+		RaycastInformation raycast(const Math::vec3& rayOrigin, const Math::vec3& rayDirection, float tMin, float tMax, const ColliderSphere* sphere);
+		RaycastInformation raycast(const Math::vec3& rayOrigin, const Math::vec3& rayDirection, float tMin, float tMax, const ColliderCapsule* capsule);
 
 	private:
 		const uint32_t m_maxIterations = 60;
