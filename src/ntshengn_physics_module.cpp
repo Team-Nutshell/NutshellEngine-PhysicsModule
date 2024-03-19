@@ -1121,17 +1121,17 @@ void NtshEngn::PhysicsModule::transform(ColliderSphere* sphere, const Math::vec3
 }
 
 void NtshEngn::PhysicsModule::transform(ColliderCapsule* capsule, const Math::vec3& translation, const Math::vec3& rotation, const Math::vec3& scale) {
-	capsule->base += translation;
-	capsule->tip += translation;
+	const Math::vec3 capsuleCenter = getCenter(capsule);
 
-	const Math::mat4 rotationMatrix = Math::rotate(rotation.x, Math::vec3(1.0f, 0.0f, 0.0f)) *
+	capsule->base -= capsuleCenter;
+	capsule->tip -= capsuleCenter;
+	const Math::mat4 rotationMatrix = Math::translate(translation) * Math::rotate(rotation.x, Math::vec3(1.0f, 0.0f, 0.0f)) *
 		Math::rotate(rotation.y, Math::vec3(0.0f, 1.0f, 0.0f)) *
 		Math::rotate(rotation.z, Math::vec3(0.0f, 0.0f, 1.0f));
-	const Math::vec3 tipMinusBase = Math::vec3(capsule->tip.data()) - Math::vec3(capsule->base.data());
 
-	const Math::vec3 tipRotation = Math::vec3(rotationMatrix * Math::vec4(tipMinusBase, 1.0f));
+	capsule->base = Math::vec3(rotationMatrix * Math::vec4(capsule->base, 1.0f)) + capsuleCenter;
+	capsule->tip = Math::vec3(rotationMatrix * Math::vec4(capsule->tip, 1.0f)) + capsuleCenter;
 
-	capsule->tip = tipRotation + capsule->base;
 	capsule->radius *= std::max(std::abs(scale.x), std::max(std::abs(scale.y), std::abs(scale.z)));
 }
 
@@ -1632,7 +1632,7 @@ void NtshEngn::PhysicsModule::boxCapsuleIntersectionInformationRay(const Collide
 	const Math::vec3 boxMin = -box->halfExtent;
 	const Math::vec3 boxMax = box->halfExtent;
 
-	const Math::vec3 rayDirection = -Math::vec3(boxRotation * Math::vec4(normal, 0.0f));
+	const Math::vec3 rayDirection = -Math::vec3(Math::transpose(boxRotation) * Math::vec4(normal, 0.0f));
 
 	for (uint8_t i = 0; i < 2; i++) {
 		Math::vec3 pos;
@@ -1643,7 +1643,7 @@ void NtshEngn::PhysicsModule::boxCapsuleIntersectionInformationRay(const Collide
 			pos = capsule->tip;
 		}
 
-		const Math::vec3 rayOrigin = Math::vec3(boxRotation * Math::vec4(pos - box->center, 1.0f));
+		const Math::vec3 rayOrigin = Math::vec3(Math::transpose(boxRotation) * Math::vec4(pos - box->center, 1.0f));
 
 		bool rayAABBIntersection = true;
 		float tMin = std::numeric_limits<float>::lowest();
