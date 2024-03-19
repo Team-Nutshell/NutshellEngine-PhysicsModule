@@ -748,6 +748,8 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 		}
 
 		if ((box2IntervalMin > box1IntervalMax) || (box1IntervalMin > box2IntervalMax)) {
+			intersectionInformation.hasIntersected = false;
+
 			return intersectionInformation;
 		}
 
@@ -820,6 +822,8 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 	const float distance = (sphere->center - closestPoint).length();
 
 	if ((distance < 0.000001f) || (distance >= sphere->radius)) {
+		intersectionInformation.hasIntersected = false;
+
 		return intersectionInformation;
 	}
 
@@ -845,6 +849,8 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 	Math::vec3 pointOnBox;
 	const float squaredDistance = squaredDistanceSegmentBox(capsule->base, capsule->tip, box, boxRotation, distanceToSegmentOrigin, pointOnBox);
 	if (squaredDistance >= (capsule->radius * capsule->radius)) {
+		intersectionInformation.hasIntersected = false;
+
 		return intersectionInformation;
 	}
 
@@ -885,6 +891,8 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 	const float centerDiffLength = centerDiff.length();
 
 	if ((centerDiffLength < 0.000001f) || (centerDiffLength >= (sphere1->radius + sphere2->radius))) {
+		intersectionInformation.hasIntersected = false;
+
 		return intersectionInformation;
 	}
 
@@ -1755,6 +1763,8 @@ NtshEngn::RaycastInformation NtshEngn::PhysicsModule::raycast(const Math::vec3& 
 	for (uint8_t i = 0; i < 3; i++) {
 		if (rayDirectionProjected[i] == 0.0f) {
 			if (((-rayToBoxProjected[i] - box->halfExtent[i]) > 0.0f) || ((-rayToBoxProjected[i] + box->halfExtent[i]) < 0.0f)) {
+				raycastInformation.hasIntersected = false;
+
 				return raycastInformation;
 			}
 			rayDirectionProjected[i] = 0.000001f;
@@ -1809,6 +1819,8 @@ NtshEngn::RaycastInformation NtshEngn::PhysicsModule::raycast(const Math::vec3& 
 	const float discriminant = (b * b) - (4.0f * a * c);
 
 	if (discriminant < 0.0f) {
+		raycastInformation.hasIntersected = false;
+
 		return raycastInformation;
 	}
 
