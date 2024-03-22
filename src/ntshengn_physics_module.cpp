@@ -862,7 +862,7 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 		const float normalLength = normal.length();
 
 		if (normalLength > 0.0f) {
-			normal *= 1.0f / normalLength;
+			normal /= normalLength;
 
 			boxCapsuleIntersectionInformationRay(box, boxRotation, capsule, normal, intersectionInformation);
 
@@ -878,6 +878,30 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 				intersectionInformation.depth = capsule->radius - std::sqrt(squaredDistance);
 				intersectionInformation.relativePoints.push_back({ pointOnBox - box->center, pointOnBox - getCenter(capsule) });
 			}
+		}
+	}
+	else {
+		Math::vec3 separatingAxis;
+		float penetrationDepth;
+		if (!boxCapsuleOverlap(box, boxRotation, capsule, penetrationDepth, separatingAxis)) {
+			intersectionInformation.hasIntersected = false;
+
+			return intersectionInformation;
+		}
+
+		boxCapsuleIntersectionInformationRay(box, boxRotation, capsule, separatingAxis, intersectionInformation);
+
+		if (intersectionInformation.relativePoints.size() == 2) {
+			return intersectionInformation;
+		}
+
+		boxCapsuleIntersectionInformationEdge(box, boxRotation, capsule, separatingAxis, intersectionInformation);
+
+		if (intersectionInformation.relativePoints.empty()) {
+			intersectionInformation.hasIntersected = true;
+			intersectionInformation.normal = separatingAxis;
+			intersectionInformation.depth = capsule->radius - penetrationDepth;
+			intersectionInformation.relativePoints.push_back({ getCenter(capsule) - box->center, Math::vec3(0.0f, 0.0f, 0.0f) });
 		}
 	}
 
@@ -1688,6 +1712,83 @@ void NtshEngn::PhysicsModule::boxCapsuleIntersectionInformationEdge(const Collid
 			}
 		}
 	}
+}
+
+bool NtshEngn::PhysicsModule::boxCapsuleOverlap(const ColliderBox* box, const Math::mat4& boxRotation, const ColliderCapsule* capsule, float& penetrationDepth, Math::vec3& separatingAxis) {
+	separatingAxis = Math::vec3(0.0f, 0.0f, 0.0f);
+	penetrationDepth = std::numeric_limits<float>::max();
+
+	for (uint8_t i = 0; i < 3; i++) {
+		float depth;
+
+		if (!boxCapsuleTestAxis(box, boxRotation, capsule, box->rotation[i], depth)) {
+			return false;
+		}
+
+		if (depth < penetrationDepth) {
+			penetrationDepth = depth;
+			separatingAxis = box->rotation[i];
+		}
+	}
+
+	const Math::vec3 capsuleSegmentAxis = Math::normalize(capsule->tip - capsule->base);
+	for (uint8_t i = 0; i < 3; i++) {
+		Math::vec3 crossAxis = Math::cross(capsuleSegmentAxis, box->rotation[i]);
+		if (Math::dot(crossAxis, crossAxis) > 0.0001f) {
+			crossAxis = Math::normalize(crossAxis);
+
+			float depth;
+
+			if (!boxCapsuleTestAxis(box, boxRotation, capsule, crossAxis, depth)) {
+				return false;
+			}
+
+			if (depth < penetrationDepth) {
+				penetrationDepth = depth;
+				separatingAxis = box->rotation[i];
+			}
+		}
+	}
+
+	const Math::vec3 boxToCapsule = getCenter(capsule) - box->center;
+	if (Math::dot(separatingAxis, boxToCapsule) < 0.0f) {
+		separatingAxis = -separatingAxis;
+	}
+
+	return true;
+}
+
+bool NtshEngn::PhysicsModule::boxCapsuleTestAxis(const ColliderBox* box, const Math::mat4& boxRotation, const ColliderCapsule* capsule, const Math::vec3& axis, float& penetrationDepth) {
+	// Project capsule on axis
+	float minCapsule = Math::dot(capsule->base, axis);
+	float maxCapsule = Math::dot(capsule->tip, axis);
+
+	if (minCapsule > maxCapsule) {
+		std::swap(minCapsule, maxCapsule);
+	}
+
+	minCapsule -= capsule->radius;
+	maxCapsule -= capsule->radius;
+
+	// Project box on axis
+	const float boxCenterProjected = Math::dot(box->center, axis);
+	const float boxHalfExtentProjected = std::abs(Math::dot(Math::vec3(boxRotation.x), axis)) * box->halfExtent.x +
+		std::abs(Math::dot(Math::vec3(boxRotation.y), axis)) * box->halfExtent.y +
+		std::abs(Math::dot(Math::vec3(boxRotation.z), axis)) * box->halfExtent.z;
+
+	const float minBox = boxCenterProjected - boxHalfExtentProjected;
+	const float maxBox = boxCenterProjected + boxHalfExtentProjected;
+
+	if ((maxCapsule < minBox) || (maxBox < minCapsule)) {
+		return false;
+	}
+
+	float interval0 = maxCapsule - minBox;
+	float interval1 = maxBox - minCapsule;
+
+	penetrationDepth = std::min(interval0, interval1);
+
+	return true;
 }
 
 std::vector<NtshEngn::Math::vec3> NtshEngn::PhysicsModule::clipEdgesToBox(const std::array<std::pair<Math::vec3, Math::vec3>, 12>& edges, const ColliderBox* box, const Math::mat4& boxRotation) {
