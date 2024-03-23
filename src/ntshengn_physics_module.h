@@ -108,6 +108,7 @@ namespace NtshEngn {
 
 		void boxCapsuleIntersectionInformationRay(const ColliderBox* box, const Math::mat4& boxRotation, const ColliderCapsule* capsule, const Math::vec3& normal, IntersectionInformation& intersectionInformation);
 		void boxCapsuleIntersectionInformationEdge(const ColliderBox* box, const Math::mat4& boxRotation, const ColliderCapsule* capsule, const Math::vec3& normal, IntersectionInformation& intersectionInformation);
+		void boxCapsuleIntersectionInformationEdgeThin(const ColliderBox* box, const Math::mat4& boxRotation, const ColliderCapsule* capsule, const Math::vec3& normal, IntersectionInformation& intersectionInformation);
 		bool boxCapsuleOverlap(const ColliderBox* box, const Math::mat4& boxRotation, const ColliderCapsule* capsule, float& penetrationDepth, Math::vec3& separatingAxis);
 		bool boxCapsuleTestAxis(const ColliderBox* box, const Math::mat4& boxRotation, const ColliderCapsule* capsule, const Math::vec3& axis, float& penetrationDepth);
 
