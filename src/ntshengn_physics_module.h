@@ -90,8 +90,8 @@ namespace NtshEngn {
 		Math::vec3 getCenter(const ColliderCapsule* capsule);
 
 		void transform(ColliderShape* shape, const Math::vec3& translation, const Math::vec3& rotation, const Math::vec3& scale);
-		void transform(ColliderSphere* sphere, const Math::vec3& translation, const Math::vec3& scale);
 		void transform(ColliderBox* box, const Math::vec3& translation, const Math::vec3& rotation, const Math::vec3& scale);
+		void transform(ColliderSphere* sphere, const Math::vec3& translation, const Math::vec3& rotation, const Math::vec3& scale);
 		void transform(ColliderCapsule* capsule, const Math::vec3& translation, const Math::vec3& rotation, const Math::vec3& scale);
 
 		Math::vec3 closestPointOnSegment(const Math::vec3& point, const Math::vec3& segmentA, const Math::vec3& segmentB);

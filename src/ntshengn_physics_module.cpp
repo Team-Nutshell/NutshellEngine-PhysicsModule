@@ -1017,7 +1017,7 @@ void NtshEngn::PhysicsModule::transform(ColliderShape* shape, const Math::vec3& 
 		transform(static_cast<ColliderBox*>(shape), translation, rotation, scale);
 	}
 	else if (shape->getType() == ColliderShapeType::Sphere) {
-		transform(static_cast<ColliderSphere*>(shape), translation, scale);
+		transform(static_cast<ColliderSphere*>(shape), translation, rotation, scale);
 	}
 	else if (shape->getType() == ColliderShapeType::Capsule) {
 		transform(static_cast<ColliderCapsule*>(shape), translation, rotation, scale);
@@ -1038,8 +1038,12 @@ void NtshEngn::PhysicsModule::transform(ColliderBox* box, const Math::vec3& tran
 	box->center = Math::vec3(rotationMatrix * Math::vec4(box->center + translation, 1.0f));
 }
 
-void NtshEngn::PhysicsModule::transform(ColliderSphere* sphere, const Math::vec3& translation, const Math::vec3& scale) {
-	sphere->center += translation;
+void NtshEngn::PhysicsModule::transform(ColliderSphere* sphere, const Math::vec3& translation, const Math::vec3& rotation, const Math::vec3& scale) {
+	const Math::mat4 rotationMatrix = Math::translate(translation) * Math::rotate(rotation.x, Math::vec3(1.0f, 0.0f, 0.0f)) *
+		Math::rotate(rotation.y, Math::vec3(0.0f, 1.0f, 0.0f)) *
+		Math::rotate(rotation.z, Math::vec3(0.0f, 0.0f, 1.0f)) * Math::translate(-translation);
+
+	sphere->center = Math::vec3(rotationMatrix * Math::vec4(sphere->center + translation, 1.0f));
 	sphere->radius *= std::max(std::abs(scale.x), std::max(std::abs(scale.y), std::abs(scale.z)));
 }
 
