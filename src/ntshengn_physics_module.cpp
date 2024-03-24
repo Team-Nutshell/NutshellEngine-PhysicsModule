@@ -1029,9 +1029,9 @@ void NtshEngn::PhysicsModule::transform(ColliderBox* box, const Math::vec3& tran
 	box->halfExtent.y *= std::abs(scale.y);
 	box->halfExtent.z *= std::abs(scale.z);
 
-	const Math::quat originalRotation = Math::to_quat(box->rotation);
-	const Math::quat modelRotation = Math::to_quat(rotation);
-	box->rotation = Math::to_vec3(originalRotation * modelRotation);
+	const Math::quat originalRotation = Math::eulerAnglesToQuat(box->rotation);
+	const Math::quat modelRotation = Math::eulerAnglesToQuat(rotation);
+	box->rotation = Math::quatToEulerAngles(originalRotation * modelRotation);
 	const Math::mat4 rotationMatrix = Math::translate(translation) * Math::rotate(box->rotation.x, Math::vec3(1.0f, 0.0f, 0.0f)) *
 		Math::rotate(box->rotation.y, Math::vec3(0.0f, 1.0f, 0.0f)) *
 		Math::rotate(box->rotation.z, Math::vec3(0.0f, 0.0f, 1.0f)) * Math::translate(-translation);
