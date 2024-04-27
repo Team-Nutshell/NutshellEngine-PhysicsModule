@@ -1137,7 +1137,7 @@ float NtshEngn::PhysicsModule::squaredDistanceLineBoxFace(uint8_t index0, uint8_
 
 	if ((direction[index0] * pointPlusHalfExtent[index1]) >= (direction[index1] * halfExtentToPoint[index0])) {
 		if ((direction[index0] * pointPlusHalfExtent[index2]) >= (direction[index2] * halfExtentToPoint[index0])) {
-			point[index0] = halfExtentToPoint[index0];
+			point[index0] = boxHalfExtent[index0];
 			const float inv = 1.0f / direction[index0];
 			point[index1] -= direction[index1] * halfExtentToPoint[index0] * inv;
 			point[index2] -= direction[index2] * halfExtentToPoint[index0] * inv;
@@ -1269,7 +1269,7 @@ float NtshEngn::PhysicsModule::squaredDistanceLineBoxNo0(Math::vec3& point, cons
 	const float productDirXHetpY = direction.x * halfExtentToPoint.y;
 	const float productDirYHetpX = direction.y * halfExtentToPoint.x;
 	
-	if (productDirXHetpY >= productDirYHetpX) {
+	if (productDirYHetpX >= productDirXHetpY) {
 		const float productDirZHetpX = direction.z * halfExtentToPoint.x;
 		const float productDirXHetpZ = direction.x * halfExtentToPoint.z;
 
@@ -1307,7 +1307,7 @@ float NtshEngn::PhysicsModule::squaredDistanceLineBoxOne0(uint8_t index0, uint8_
 	if (product0 >= product1) {
 		point[index0] = boxHalfExtent[index0];
 
-		float halfExtentPlusPoint1 = point[index1] + boxHalfExtent[index1];
+		const float halfExtentPlusPoint1 = point[index1] + boxHalfExtent[index1];
 		const float delta = product0 - (direction[index0] * halfExtentPlusPoint1);
 		if (delta >= 0.0f) {
 			const float invLSquare = 1.0f / ((direction[index0] * direction[index0]) + (direction[index1] * direction[index1]));
@@ -1324,7 +1324,7 @@ float NtshEngn::PhysicsModule::squaredDistanceLineBoxOne0(uint8_t index0, uint8_
 	else {
 		point[index1] = boxHalfExtent[index1];
 
-		float halfExtentPlusPoint0 = point[index0] + boxHalfExtent[index0];
+		const float halfExtentPlusPoint0 = point[index0] + boxHalfExtent[index0];
 		const float delta = product1 - (direction[index1] * halfExtentPlusPoint0);
 		if (delta >= 0.0f) {
 			const float invLSquare = 1.0f / ((direction[index0] * direction[index0]) + (direction[index1] * direction[index1]));
