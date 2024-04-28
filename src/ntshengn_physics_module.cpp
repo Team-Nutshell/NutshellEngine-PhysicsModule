@@ -1048,15 +1048,12 @@ void NtshEngn::PhysicsModule::transform(ColliderSphere* sphere, const Math::vec3
 }
 
 void NtshEngn::PhysicsModule::transform(ColliderCapsule* capsule, const Math::vec3& translation, const Math::vec3& rotation, const Math::vec3& scale) {
-	capsule->base += translation;
-	capsule->tip += translation;
-
-	const Math::mat4 rotationMatrix = Math::rotate(rotation.x, Math::vec3(1.0f, 0.0f, 0.0f)) *
+	const Math::mat4 rotationMatrix = Math::translate(translation) * Math::rotate(rotation.x, Math::vec3(1.0f, 0.0f, 0.0f)) *
 		Math::rotate(rotation.y, Math::vec3(0.0f, 1.0f, 0.0f)) *
-		Math::rotate(rotation.z, Math::vec3(0.0f, 0.0f, 1.0f));
+		Math::rotate(rotation.z, Math::vec3(0.0f, 0.0f, 1.0f)) * Math::translate(-translation);
 
-	capsule->base = Math::vec3(rotationMatrix * Math::vec4(capsule->base, 1.0f));
-	capsule->tip = Math::vec3(rotationMatrix * Math::vec4(capsule->tip, 1.0f));
+	capsule->base = Math::vec3(rotationMatrix * Math::vec4(capsule->base + translation, 1.0f));
+	capsule->tip = Math::vec3(rotationMatrix * Math::vec4(capsule->tip + translation, 1.0f));
 
 	capsule->radius *= std::max(std::abs(scale.x), std::max(std::abs(scale.y), std::abs(scale.z)));
 }
@@ -1491,9 +1488,9 @@ float NtshEngn::PhysicsModule::squaredDistanceLineBox(const Math::vec3& lineOrig
 		if (reflect[i]) {
 			point[i] = -point[i];
 		}
-
-		linePointOnBox = point;
 	}
+
+	linePointOnBox = point;
 
 	return squaredDistance;
 }
