@@ -6,6 +6,8 @@
 #include <vector>
 #include <unordered_map>
 
+#define CAPSULE_RADIUS_INFLATED 0.01f
+
 struct ObjectDuringCollisionResponseState {
 	NtshEngn::Math::vec3 position = NtshEngn::Math::vec3(0.0f, 0.0f, 0.0f);
 	NtshEngn::Math::vec3 linearVelocity = NtshEngn::Math::vec3(0.0f, 0.0f, 0.0f);

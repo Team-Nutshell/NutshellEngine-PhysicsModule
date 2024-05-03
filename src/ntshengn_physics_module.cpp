@@ -848,7 +848,7 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 	float distanceToSegmentOrigin;
 	Math::vec3 pointOnBox;
 	const float squaredDistance = squaredDistanceSegmentBox(capsule->base, capsule->tip, box, boxRotation, distanceToSegmentOrigin, pointOnBox);
-	if (squaredDistance >= (capsule->radius * capsule->radius)) {
+	if (squaredDistance >= ((capsule->radius + CAPSULE_RADIUS_INFLATED) * (capsule->radius + CAPSULE_RADIUS_INFLATED))) {
 		intersectionInformation.hasIntersected = false;
 
 		return intersectionInformation;
@@ -1550,14 +1550,20 @@ float NtshEngn::PhysicsModule::squaredDistanceSegmentBox(const Math::vec3& segme
 }
 
 void NtshEngn::PhysicsModule::boxCapsuleIntersectionInformationRay(const ColliderBox* box, const Math::mat4& boxRotation, const ColliderCapsule* capsule, const Math::vec3& normal, IntersectionInformation& intersectionInformation) {
-	intersectionInformation.depth = std::numeric_limits<float>::max();
+	intersectionInformation.depth = std::numeric_limits<float>::lowest();
 	
 	const Math::vec3 boxMin = -box->halfExtent;
 	const Math::vec3 boxMax = box->halfExtent;
 
 	const Math::vec3 rayDirection = -Math::vec3(Math::transpose(boxRotation) * Math::vec4(normal, 0.0f));
 
+	float tMin;
+	float tMax;
+
 	for (uint8_t i = 0; i < 2; i++) {
+		tMin = std::numeric_limits<float>::lowest();
+		tMax = std::numeric_limits<float>::max();
+
 		Math::vec3 pos;
 		if (i == 0) {
 			pos = capsule->base;
@@ -1565,15 +1571,12 @@ void NtshEngn::PhysicsModule::boxCapsuleIntersectionInformationRay(const Collide
 		else {
 			pos = capsule->tip;
 		}
-
-		const Math::vec3 rayOrigin = Math::vec3(Math::transpose(boxRotation) * Math::vec4(pos - box->center, 1.0f));
+		const Math::vec3 rayOrigin = Math::vec3(Math::transpose(boxRotation) * Math::vec4(pos - box->center, 0.0f));
 
 		bool rayAABBIntersection = true;
-		float tMin = std::numeric_limits<float>::lowest();
-		float tMax = std::numeric_limits<float>::max();
 
 		for (uint8_t j = 0; j < 3; j++) {
-			if ((rayDirection[j] > -0.0001f) && (rayDirection[j] < 0.0001f)) {
+			if ((rayDirection[j] > -std::numeric_limits<float>::epsilon()) && (rayDirection[j] < std::numeric_limits<float>::epsilon())) {
 				if ((rayDirection[j] < boxMin[j]) || (rayDirection[j] > boxMax[j])) {
 					rayAABBIntersection = false;
 					break;
@@ -1595,23 +1598,23 @@ void NtshEngn::PhysicsModule::boxCapsuleIntersectionInformationRay(const Collide
 					tMax = t2;
 				}
 
-				if ((tMin > tMax) || (tMax < 0.0001f)) {
+				if ((tMin > tMax) || (tMax < std::numeric_limits<float>::epsilon())) {
 					rayAABBIntersection = false;
 					break;
 				}
 			}
 		}
 
-		if ((tMin > tMax) || (tMax < 0.0001f)) {
+		if ((tMin > tMax) || (tMax < std::numeric_limits<float>::epsilon())) {
 			rayAABBIntersection = false;
 		}
 
-		if (rayAABBIntersection && (tMin < capsule->radius)) {
+		if (rayAABBIntersection && (tMin < (capsule->radius + CAPSULE_RADIUS_INFLATED))) {
 			const Math::vec3 intersectionPoint = pos - (tMin * normal);
 
 			intersectionInformation.hasIntersected = true;
 			intersectionInformation.normal = normal;
-			intersectionInformation.depth = std::min(intersectionInformation.depth, capsule->radius - tMin);
+			intersectionInformation.depth = std::max(intersectionInformation.depth, capsule->radius - tMin);
 			intersectionInformation.relativePoints.push_back({ intersectionPoint - box->center, intersectionPoint - getCenter(capsule) });
 		}
 	}
@@ -1688,7 +1691,7 @@ void NtshEngn::PhysicsModule::boxCapsuleIntersectionInformationEdge(const Collid
 			const Math::vec3 boxEdge = boxEdges[i].second - boxEdges[i].first;
 
 			tmp = Math::dot(planeAxis, boxEdge);
-			if ((tmp < -0.0001f) || (tmp > 0.0001f)) {
+			if ((tmp < -std::numeric_limits<float>::epsilon()) || (tmp > std::numeric_limits<float>::epsilon())) {
 				intersectionPoint = boxEdges[i].first - (boxEdge * (distancePlaneBoxEdgeStart / tmp));
 				distance = ((extendedCapsuleSegment[axis0] * (intersectionPoint[axis1] - extendedCapsuleSegmentBase[axis1])) - (extendedCapsuleSegment[axis1] * (intersectionPoint[axis0] - extendedCapsuleSegmentBase[axis0]))) * coefficient;
 				if (distance >= 0.0f) {
@@ -1696,7 +1699,7 @@ void NtshEngn::PhysicsModule::boxCapsuleIntersectionInformationEdge(const Collid
 					intersectionPoint -= distance * -normal;
 
 					const float intersectionPointInEdge = ((extendedCapsuleSegmentBase.x - intersectionPoint.x) * (extendedCapsuleSegmentTip.x - intersectionPoint.x)) + ((extendedCapsuleSegmentBase.y - intersectionPoint.y) * (extendedCapsuleSegmentTip.y - intersectionPoint.y)) + ((extendedCapsuleSegmentBase.z - intersectionPoint.z) * (extendedCapsuleSegmentTip.z - intersectionPoint.z));
-					if ((intersectionPointInEdge < 0.0f) && (distance < capsule->radius)) {
+					if ((intersectionPointInEdge < 0.0f) && (distance < (capsule->radius + CAPSULE_RADIUS_INFLATED))) {
 						const Math::vec3 intersectionPointBoxRelative = baseIntersectionPoint - box->center;
 						const Math::vec3 intersectionPointCapsuleRelative = baseIntersectionPoint - getCenter(capsule);
 
@@ -1708,7 +1711,7 @@ void NtshEngn::PhysicsModule::boxCapsuleIntersectionInformationEdge(const Collid
 
 						intersectionInformation.hasIntersected = true;
 						intersectionInformation.normal = normal;
-						intersectionInformation.depth = std::min(intersectionInformation.depth, capsule->radius - distance);
+						intersectionInformation.depth = std::max(intersectionInformation.depth, capsule->radius - distance);
 						intersectionInformation.relativePoints.push_back({ intersectionPointBoxRelative, intersectionPointCapsuleRelative });
 					}
 				}
@@ -1808,7 +1811,7 @@ void NtshEngn::PhysicsModule::boxCapsuleIntersectionInformationEdgeThin(const Co
 
 						intersectionInformation.hasIntersected = true;
 						intersectionInformation.normal = normal;
-						intersectionInformation.depth = std::min(intersectionInformation.depth, -(capsule->radius + distance));
+						intersectionInformation.depth = std::max(intersectionInformation.depth, -(capsule->radius + distance));
 						intersectionInformation.relativePoints.push_back({ intersectionPointBoxRelative, intersectionPointCapsuleRelative });
 					}
 				}
