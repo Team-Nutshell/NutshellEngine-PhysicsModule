@@ -1,6 +1,5 @@
 #pragma once
-#include "../Common/module_interfaces/ntshengn_physics_module_interface.h"
-#include "../Common/ecs/ntshengn_ecs.h"
+#include "../Common/modules/ntshengn_physics_module_interface.h"
 #include "../Common/utils/ntshengn_utils_math.h"
 #include <set>
 #include <vector>

@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <limits>
 #include <array>
+#include <mutex>
 #include <cmath>
 
 void NtshEngn::PhysicsModule::init() {
