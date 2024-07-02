@@ -87,8 +87,6 @@ NtshEngn::RaycastInformation NtshEngn::PhysicsModule::raycast(const Math::vec3& 
 std::vector<std::pair<NtshEngn::Entity, NtshEngn::RaycastInformation>> NtshEngn::PhysicsModule::raycastAll(const Math::vec3& rayOrigin, const Math::vec3& rayDirection, float tMin, float tMax) {
 	std::vector<std::pair<Entity, RaycastInformation>> raycastInformations;
 
-	const Math::vec3 invRayDirection = Math::vec3(1.0f / rayDirection.x, 1.0f / rayDirection.y, 1.0f / rayDirection.z);
-
 	for (Entity entity : entities) {
 		const Transform& entityTransform = ecs->getComponent<Transform>(entity);
 
@@ -324,7 +322,7 @@ void NtshEngn::PhysicsModule::collisionsResponse() {
 	}
 
 	// Apply changes in velocities and position once all collisions are resolved
-	for (const std::pair<Entity, ObjectDuringCollisionResponseState>& objectState : objectStates) {
+	for (const auto& objectState : objectStates) {
 		Transform& entityTransform = ecs->getComponent<Transform>(objectState.first);
 		Rigidbody& entityRigidbody = ecs->getComponent<Rigidbody>(objectState.first);
 
