@@ -248,10 +248,6 @@ void NtshEngn::PhysicsModule::collisionsResponse() {
 			Math::vec3 relativeVelocity = fullVelocity2 - fullVelocity1;
 			float impulseForce = Math::dot(relativeVelocity, collision.intersectionNormal);
 
-			if (impulseForce >= 0.0f) {
-				continue;
-			}
-
 			const Math::vec3 angular1 = Math::cross(invInertia1 * Math::cross(collision.relativeIntersectionPoints[i].first, collision.intersectionNormal), collision.relativeIntersectionPoints[i].first);
 			const Math::vec3 angular2 = Math::cross(invInertia2 * Math::cross(collision.relativeIntersectionPoints[i].second, collision.intersectionNormal), collision.relativeIntersectionPoints[i].second);
 			const float angularEffect = Math::dot(angular1 + angular2, collision.intersectionNormal);
