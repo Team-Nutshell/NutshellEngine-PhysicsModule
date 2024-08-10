@@ -1026,11 +1026,12 @@ void NtshEngn::PhysicsModule::transform(ColliderBox* box, const Math::vec3& tran
 
 	const Math::quat originalRotation = Math::eulerAnglesToQuat(box->rotation);
 	const Math::quat modelRotation = Math::eulerAnglesToQuat(rotation);
-	box->rotation = Math::quatToEulerAngles(originalRotation * modelRotation);
-	const Math::mat4 rotationMatrix = Math::translate(translation) * Math::rotate(box->rotation.x, Math::vec3(1.0f, 0.0f, 0.0f)) *
-		Math::rotate(box->rotation.y, Math::vec3(0.0f, 1.0f, 0.0f)) *
-		Math::rotate(box->rotation.z, Math::vec3(0.0f, 0.0f, 1.0f)) * Math::translate(-translation);
-	box->center = Math::vec3(rotationMatrix * Math::vec4(box->center + translation, 1.0f));
+	box->rotation = Math::quatToEulerAngles(modelRotation * originalRotation);
+	const Math::mat4 rotationMatrix = Math::translate(translation) * Math::rotate(rotation.x, Math::vec3(1.0f, 0.0f, 0.0f)) *
+		Math::rotate(rotation.y, Math::vec3(0.0f, 1.0f, 0.0f)) *
+		Math::rotate(rotation.z, Math::vec3(0.0f, 0.0f, 1.0f)) * Math::translate(-translation);
+	const Math::vec3 scaledCenter = Math::vec3(box->center.x * std::abs(scale.x), box->center.y * std::abs(scale.y), box->center.z * std::abs(scale.z));
+	box->center = Math::vec3(rotationMatrix * Math::vec4(scaledCenter + translation, 1.0f));
 }
 
 void NtshEngn::PhysicsModule::transform(ColliderSphere* sphere, const Math::vec3& translation, const Math::vec3& rotation, const Math::vec3& scale) {
@@ -1038,7 +1039,8 @@ void NtshEngn::PhysicsModule::transform(ColliderSphere* sphere, const Math::vec3
 		Math::rotate(rotation.y, Math::vec3(0.0f, 1.0f, 0.0f)) *
 		Math::rotate(rotation.z, Math::vec3(0.0f, 0.0f, 1.0f)) * Math::translate(-translation);
 
-	sphere->center = Math::vec3(rotationMatrix * Math::vec4(sphere->center + translation, 1.0f));
+	const Math::vec3 scaledCenter = Math::vec3(sphere->center.x * std::abs(scale.x), sphere->center.y * std::abs(scale.y), sphere->center.z * std::abs(scale.z));
+	sphere->center = Math::vec3(rotationMatrix * Math::vec4(scaledCenter + translation, 1.0f));
 	sphere->radius *= std::max(std::abs(scale.x), std::max(std::abs(scale.y), std::abs(scale.z)));
 }
 
@@ -1047,8 +1049,10 @@ void NtshEngn::PhysicsModule::transform(ColliderCapsule* capsule, const Math::ve
 		Math::rotate(rotation.y, Math::vec3(0.0f, 1.0f, 0.0f)) *
 		Math::rotate(rotation.z, Math::vec3(0.0f, 0.0f, 1.0f)) * Math::translate(-translation);
 
-	capsule->base = Math::vec3(rotationMatrix * Math::vec4(capsule->base + translation, 1.0f));
-	capsule->tip = Math::vec3(rotationMatrix * Math::vec4(capsule->tip + translation, 1.0f));
+	const Math::vec3 scaledBase = Math::vec3(capsule->base.x * std::abs(scale.x), capsule->base.y * std::abs(scale.y), capsule->base.z * std::abs(scale.z));
+	capsule->base = Math::vec3(rotationMatrix * Math::vec4(scaledBase + translation, 1.0f));
+	const Math::vec3 scaledTip = Math::vec3(capsule->tip.x * std::abs(scale.x), capsule->tip.y * std::abs(scale.y), capsule->tip.z * std::abs(scale.z));
+	capsule->tip = Math::vec3(rotationMatrix * Math::vec4(scaledTip + translation, 1.0f));
 
 	capsule->radius *= std::max(std::abs(scale.x), std::max(std::abs(scale.y), std::abs(scale.z)));
 }
