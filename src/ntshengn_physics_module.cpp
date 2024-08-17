@@ -46,6 +46,17 @@ std::vector<std::pair<NtshEngn::Entity, NtshEngn::RaycastInformation>> NtshEngn:
 	return std::vector<std::pair<Entity, RaycastInformation>>();
 }
 
+void NtshEngn::PhysicsModule::setConstantForces(const Math::vec3& constantForces) {
+	NTSHENGN_UNUSED(constantForces);
+	NTSHENGN_MODULE_FUNCTION_NOT_IMPLEMENTED();
+}
+
+NtshEngn::Math::vec3 NtshEngn::PhysicsModule::getConstantForces() {
+	NTSHENGN_MODULE_FUNCTION_NOT_IMPLEMENTED();
+
+	return Math::vec3(0.0f, 0.0f, 0.0f);
+}
+
 extern "C" NTSHENGN_MODULE_API NtshEngn::PhysicsModuleInterface* createModule() {
 	return new NtshEngn::PhysicsModule;
 }
