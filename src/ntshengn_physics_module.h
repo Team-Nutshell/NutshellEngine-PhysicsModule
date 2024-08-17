@@ -63,6 +63,11 @@ namespace NtshEngn {
 		// Returns a list of RaycastInformation structures containing information about the hit entities
 		std::vector<std::pair<Entity, RaycastInformation>> raycastAll(const Math::vec3& rayOrigin, const Math::vec3& rayDirection, float tMin, float tMax);
 
+		// Sets the constant forces
+		void setConstantForces(const Math::vec3& constantForces);
+		// Returns the constant forces
+		Math::vec3 getConstantForces();
+
 	public:
 		const ComponentMask getComponentMask() const;
 
@@ -124,7 +129,7 @@ namespace NtshEngn {
 		const double m_maxDeltaTime = 1000.0 / 60.0;
 		double m_timeAccumulator = 0.0;
 
-		const Math::vec3 m_gravity = Math::vec3(0.0f, -9.81f, 0.0f);
+		Math::vec3 m_constantForces = Math::vec3(0.0f, -9.81f, 0.0f);
 
 		std::set<BroadphaseCollision> m_broadphaseCollisions;
 		std::vector<NarrowphaseCollision> m_narrowphaseCollisions;

@@ -130,6 +130,14 @@ std::vector<std::pair<NtshEngn::Entity, NtshEngn::RaycastInformation>> NtshEngn:
 	return raycastInformations;
 }
 
+void NtshEngn::PhysicsModule::setConstantForces(const Math::vec3& constantForces) {
+	m_constantForces = constantForces;
+}
+
+NtshEngn::Math::vec3 NtshEngn::PhysicsModule::getConstantForces() {
+	return m_constantForces;
+}
+
 const NtshEngn::ComponentMask NtshEngn::PhysicsModule::getComponentMask() const {
 	ComponentMask componentMask;
 	componentMask.set(ecs->getComponentID<Rigidbody>());
@@ -149,7 +157,7 @@ void NtshEngn::PhysicsModule::eulerIntegrator(float dtSeconds) {
 				entityRigidbody.angularAcceleration = entityRigidbody.torque / entityRigidbody.inertia;
 
 				if (entityRigidbody.isAffectedByConstants) {
-					entityRigidbody.linearAcceleration += m_gravity;
+					entityRigidbody.linearAcceleration += m_constantForces;
 				}
 
 				entityRigidbody.linearVelocity += entityRigidbody.linearAcceleration * dtSeconds;
