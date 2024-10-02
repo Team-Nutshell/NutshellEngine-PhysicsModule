@@ -8,7 +8,7 @@ namespace NtshEngn {
 		PhysicsModule() : PhysicsModuleInterface("NutshellEngine Default Physics Module") {}
 
 		void init();
-		void update(double dt);
+		void update(float dt);
 		void destroy();
 
 		// Returns an IntersectionInformation structure containing information about the intersection
