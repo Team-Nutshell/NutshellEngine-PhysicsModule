@@ -13,15 +13,13 @@
 void NtshEngn::PhysicsModule::init() {
 }
 
-void NtshEngn::PhysicsModule::update(double dt) {
+void NtshEngn::PhysicsModule::update(float dt) {
 	m_timeAccumulator += dt;
 
 	uint32_t iterations = 0;
 	while ((m_timeAccumulator >= m_maxDeltaTime) && (iterations < m_maxIterations)) {
-		const float dtSeconds = static_cast<float>(m_maxDeltaTime / 1000.0);
-
 		// Euler integrator
-		eulerIntegrator(dtSeconds);
+		eulerIntegrator(dt);
 
 		// Collisions detection
 		collisionsDetection();
@@ -146,7 +144,7 @@ const NtshEngn::ComponentMask NtshEngn::PhysicsModule::getComponentMask() const 
 	return componentMask;
 }
 
-void NtshEngn::PhysicsModule::eulerIntegrator(float dtSeconds) {
+void NtshEngn::PhysicsModule::eulerIntegrator(float dt) {
 	for (Entity entity : entities) {
 		if (ecs->hasComponent<Rigidbody>(entity)) {
 			Rigidbody& entityRigidbody = ecs->getComponent<Rigidbody>(entity);
@@ -160,13 +158,13 @@ void NtshEngn::PhysicsModule::eulerIntegrator(float dtSeconds) {
 					entityRigidbody.linearAcceleration += m_constantForces;
 				}
 
-				entityRigidbody.linearVelocity += entityRigidbody.linearAcceleration * dtSeconds;
-				entityRigidbody.angularVelocity += entityRigidbody.angularAcceleration * dtSeconds;
+				entityRigidbody.linearVelocity += entityRigidbody.linearAcceleration * dt;
+				entityRigidbody.angularVelocity += entityRigidbody.angularAcceleration * dt;
 
-				entityTransform.position += entityRigidbody.linearVelocity * dtSeconds;
+				entityTransform.position += entityRigidbody.linearVelocity * dt;
 
 				if (!entityRigidbody.lockRotation) {
-					entityTransform.rotation += entityRigidbody.angularVelocity * dtSeconds;
+					entityTransform.rotation += entityRigidbody.angularVelocity * dt;
 				}
 			}
 			else {

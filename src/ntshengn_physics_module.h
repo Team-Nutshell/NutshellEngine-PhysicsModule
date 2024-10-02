@@ -52,7 +52,7 @@ namespace NtshEngn {
 		PhysicsModule() : PhysicsModuleInterface("NutshellEngine Euler Physics Module") {}
 
 		void init();
-		void update(double dt);
+		void update(float dt);
 		void destroy();
 
 		// Returns an IntersectionInformation structure containing information about the intersection
@@ -126,8 +126,8 @@ namespace NtshEngn {
 
 	private:
 		const uint32_t m_maxIterations = 60;
-		const double m_maxDeltaTime = 1000.0 / 60.0;
-		double m_timeAccumulator = 0.0;
+		const float m_maxDeltaTime = 1.0f / 60.0f;
+		float m_timeAccumulator = 0.0f;
 
 		Math::vec3 m_constantForces = Math::vec3(0.0f, -9.81f, 0.0f);
 
