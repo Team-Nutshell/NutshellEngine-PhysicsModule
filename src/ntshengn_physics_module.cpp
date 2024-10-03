@@ -19,7 +19,7 @@ void NtshEngn::PhysicsModule::update(float dt) {
 	uint32_t iterations = 0;
 	while ((m_timeAccumulator >= m_maxDeltaTime) && (iterations < m_maxIterations)) {
 		// Euler integrator
-		eulerIntegrator(dt);
+		eulerIntegrator(m_maxDeltaTime);
 
 		// Collisions detection
 		collisionsDetection();
