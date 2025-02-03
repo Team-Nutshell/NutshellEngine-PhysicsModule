@@ -787,6 +787,7 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 			for (size_t j = 0; j < alreadySeenPoints.size(); j++) {
 				if (intersectionPoints[i] == alreadySeenPoints[j]) {
 					foundPoint = true;
+					break;
 				}
 			}
 			if (!foundPoint) {
