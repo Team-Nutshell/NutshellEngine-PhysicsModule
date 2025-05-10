@@ -19,13 +19,19 @@ void NtshEngn::PhysicsModule::update(float dt) {
 	uint32_t iterations = 0;
 	while ((m_timeAccumulator >= m_maxDeltaTime) && (iterations < m_maxIterations)) {
 		// Euler integrator
+		profiler->startBlock("Euler Integrator");
 		eulerIntegrator(m_maxDeltaTime);
+		profiler->endBlock();
 
 		// Collisions detection
+		profiler->startBlock("Collisions Detection");
 		collisionsDetection();
+		profiler->endBlock();
 
 		// Collisions response
+		profiler->startBlock("Collisions Response");
 		collisionsResponse();
+		profiler->endBlock();
 
 		m_timeAccumulator -= m_maxDeltaTime;
 
@@ -179,8 +185,12 @@ void NtshEngn::PhysicsModule::eulerIntegrator(float dt) {
 }
 
 void NtshEngn::PhysicsModule::collisionsDetection() {
+	profiler->startBlock("Broadphase");
 	collisionsBroadphase();
+	profiler->endBlock();
+	profiler->startBlock("Narrowphase");
 	collisionsNarrowphase();
+	profiler->endBlock();
 }
 
 void NtshEngn::PhysicsModule::collisionsResponse() {
@@ -196,8 +206,8 @@ void NtshEngn::PhysicsModule::collisionsResponse() {
 
 		// Position correction
 		Math::vec3 correction = std::max(collision.intersectionDepth, 0.0f) * collision.intersectionNormal;
-		Math::vec3 entity1CorrectedPositionDelta = 0.0f;
-		Math::vec3 entity2CorrectedPositionDelta = 0.0f;
+		Math::vec3 entity1CorrectedPositionDelta = Math::vec3(0.0f, 0.0f, 0.0f);
+		Math::vec3 entity2CorrectedPositionDelta = Math::vec3(0.0f, 0.0f, 0.0f);
 
 		if (!entity1Rigidbody.isStatic && !entity2Rigidbody.isStatic) {
 			// If no entity is static, correction is shared between both of them
@@ -442,6 +452,7 @@ void NtshEngn::PhysicsModule::collisionsResponse() {
 void NtshEngn::PhysicsModule::collisionsBroadphase() {
 	m_broadphaseCollisions.clear();
 
+	profiler->startBlock("Prepare Octree");
 	Math::vec3 sceneAABBMin;
 	Math::vec3 sceneAABBMax;
 
@@ -567,12 +578,19 @@ void NtshEngn::PhysicsModule::collisionsBroadphase() {
 			sceneAABBMax.z = entityAABB.position.z + entityAABB.size.z;
 		}
 	}
+	profiler->endBlock();
 
+	profiler->startBlock("Create Octree");
 	Octree<Entity> octree = Octree<Entity>((sceneAABBMin + sceneAABBMax) / 2.0f, ((sceneAABBMax - sceneAABBMin) / 2.0f) * 100.0f, 6);
+	profiler->endBlock();
+
+	profiler->startBlock("Octree Insert");
 	for (const auto& it : entityAABBs) {
 		octree.insert(it.first, it.second.position, it.second.size);
 	}
+	profiler->endBlock();
 
+	profiler->startBlock("Octree Execute");
 	octree.execute([this, &entityStatic](std::vector<Octree<Entity>::Entry>& entries) {
 		for (std::vector<Octree<Entity>::Entry>::iterator i = entries.begin(); i != entries.end(); i++) {
 			for (std::vector<Octree<Entity>::Entry>::iterator j = std::next(i); j != entries.end(); j++) {
@@ -586,6 +604,7 @@ void NtshEngn::PhysicsModule::collisionsBroadphase() {
 			}
 		}
 		});
+	profiler->endBlock();
 }
 
 void NtshEngn::PhysicsModule::collisionsNarrowphase() {
