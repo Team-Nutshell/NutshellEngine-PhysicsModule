@@ -456,10 +456,10 @@ void NtshEngn::PhysicsModule::collisionsBroadphase() {
 	Math::vec3 sceneAABBMin;
 	Math::vec3 sceneAABBMax;
 
-	std::unordered_map<Entity, AABB> entityAABBs;
-	std::unordered_map<Entity, bool> entityStatic;
+	std::vector<OctreeData> octreeDatas;
 	for (const Entity& entity : entities) {
-		AABB entityAABB;
+		OctreeData octreeData;
+		octreeData.entity = entity;
 
 		const Transform& entityTransform = ecs->getComponent<Transform>(entity);
 
@@ -517,21 +517,21 @@ void NtshEngn::PhysicsModule::collisionsBroadphase() {
 					}
 				}
 
-				entityAABB.position = colliderBox->center;
-				entityAABB.size = (maxAABB - minAABB) / 2.0f;
+				octreeData.aabb.position = colliderBox->center;
+				octreeData.aabb.size = (maxAABB - minAABB) / 2.0f;
 			}
 			else if (collidable.collider->getType() == ColliderShapeType::Sphere) {
 				ColliderSphere* colliderSphere = static_cast<ColliderSphere*>(collidable.collider.get());
 				transform(colliderSphere, entityTransform.position, entityTransform.rotation, entityTransform.scale);
 
-				entityAABB.position = colliderSphere->center;
-				entityAABB.size = Math::vec3(colliderSphere->radius);
+				octreeData.aabb.position = colliderSphere->center;
+				octreeData.aabb.size = Math::vec3(colliderSphere->radius);
 			}
 			else if (collidable.collider->getType() == ColliderShapeType::Capsule) {
 				ColliderCapsule* colliderCapsule = static_cast<ColliderCapsule*>(collidable.collider.get());
 				transform(colliderCapsule, entityTransform.position, entityTransform.rotation, entityTransform.scale);
 
-				entityAABB.position = getCenter(colliderCapsule);
+				octreeData.aabb.position = getCenter(colliderCapsule);
 
 				const Math::vec3 baseAABBMin = colliderCapsule->base - Math::vec3(colliderCapsule->radius);
 				const Math::vec3 baseAABBMax = colliderCapsule->base + Math::vec3(colliderCapsule->radius);
@@ -542,7 +542,7 @@ void NtshEngn::PhysicsModule::collisionsBroadphase() {
 				const Math::vec3 capsuleAABBMin = Math::vec3(std::min(baseAABBMin.x, tipAABBMin.x), std::min(baseAABBMin.y, tipAABBMin.y), std::min(baseAABBMin.z, tipAABBMin.z));
 				const Math::vec3 capsuleAABBMax = Math::vec3(std::max(baseAABBMax.x, tipAABBMax.x), std::max(baseAABBMax.y, tipAABBMax.y), std::max(baseAABBMax.z, tipAABBMax.z));
 
-				entityAABB.size = (capsuleAABBMax - capsuleAABBMin) / 2.0f;
+				octreeData.aabb.size = (capsuleAABBMax - capsuleAABBMin) / 2.0f;
 			}
 		}
 		else {
@@ -555,50 +555,51 @@ void NtshEngn::PhysicsModule::collisionsBroadphase() {
 			entityIsStatic = entityRigidbody.isStatic;
 		}
 
-		entityAABBs[entity] = entityAABB;
-		entityStatic[entity] = entityIsStatic;
+		octreeData.isStatic = entityIsStatic;
 
-		if ((entityAABB.position.x - entityAABB.size.x) < sceneAABBMin.x) {
-			sceneAABBMin.x = entityAABB.position.x - entityAABB.size.x;
+		if ((octreeData.aabb.position.x - octreeData.aabb.size.x) < sceneAABBMin.x) {
+			sceneAABBMin.x = octreeData.aabb.position.x - octreeData.aabb.size.x;
 		}
-		if ((entityAABB.position.y - entityAABB.size.y) < sceneAABBMin.y) {
-			sceneAABBMin.y = entityAABB.position.y - entityAABB.size.y;
+		if ((octreeData.aabb.position.y - octreeData.aabb.size.y) < sceneAABBMin.y) {
+			sceneAABBMin.y = octreeData.aabb.position.y - octreeData.aabb.size.y;
 		}
-		if ((entityAABB.position.z - entityAABB.size.z) < sceneAABBMin.z) {
-			sceneAABBMin.z = entityAABB.position.z - entityAABB.size.z;
+		if ((octreeData.aabb.position.z - octreeData.aabb.size.z) < sceneAABBMin.z) {
+			sceneAABBMin.z = octreeData.aabb.position.z - octreeData.aabb.size.z;
 		}
 
-		if ((entityAABB.position.x + entityAABB.size.x) > sceneAABBMax.x) {
-			sceneAABBMax.x = entityAABB.position.x + entityAABB.size.x;
+		if ((octreeData.aabb.position.x + octreeData.aabb.size.x) > sceneAABBMax.x) {
+			sceneAABBMax.x = octreeData.aabb.position.x + octreeData.aabb.size.x;
 		}
-		if ((entityAABB.position.y + entityAABB.size.y) > sceneAABBMax.y) {
-			sceneAABBMax.y = entityAABB.position.y + entityAABB.size.y;
+		if ((octreeData.aabb.position.y + octreeData.aabb.size.y) > sceneAABBMax.y) {
+			sceneAABBMax.y = octreeData.aabb.position.y + octreeData.aabb.size.y;
 		}
-		if ((entityAABB.position.z + entityAABB.size.z) > sceneAABBMax.z) {
-			sceneAABBMax.z = entityAABB.position.z + entityAABB.size.z;
+		if ((octreeData.aabb.position.z + octreeData.aabb.size.z) > sceneAABBMax.z) {
+			sceneAABBMax.z = octreeData.aabb.position.z + octreeData.aabb.size.z;
 		}
+
+		octreeDatas.push_back(octreeData);
 	}
 	profiler->endBlock();
 
 	profiler->startBlock("Create Octree");
-	Octree<Entity> octree = Octree<Entity>((sceneAABBMin + sceneAABBMax) / 2.0f, ((sceneAABBMax - sceneAABBMin) / 2.0f) * 100.0f, 6);
+	Octree<OctreeData> octree = Octree<OctreeData>((sceneAABBMin + sceneAABBMax) / 2.0f, ((sceneAABBMax - sceneAABBMin) / 2.0f) * 100.0f, 6);
 	profiler->endBlock();
 
 	profiler->startBlock("Octree Insert");
-	for (const auto& it : entityAABBs) {
-		octree.insert(it.first, it.second.position, it.second.size);
+	for (const OctreeData& octreeData : octreeDatas) {
+		octree.insert(octreeData, octreeData.aabb.position, octreeData.aabb.size);
 	}
 	profiler->endBlock();
 
 	profiler->startBlock("Octree Execute");
-	octree.execute([this, &entityStatic](std::vector<Octree<Entity>::Entry>& entries) {
-		for (std::vector<Octree<Entity>::Entry>::iterator i = entries.begin(); i != entries.end(); i++) {
-			for (std::vector<Octree<Entity>::Entry>::iterator j = std::next(i); j != entries.end(); j++) {
+	octree.execute([this](std::vector<Octree<OctreeData>::Entry>& entries) {
+		for (std::vector<Octree<OctreeData>::Entry>::iterator i = entries.begin(); i != entries.end(); i++) {
+			for (std::vector<Octree<OctreeData>::Entry>::iterator j = std::next(i); j != entries.end(); j++) {
 				BroadphaseCollision broadphaseCollision;
-				broadphaseCollision.entity1 = std::min(i->object, j->object);
-				broadphaseCollision.entity2 = std::max(i->object, j->object);
+				broadphaseCollision.entity1 = std::min(i->object.entity, j->object.entity);
+				broadphaseCollision.entity2 = std::max(i->object.entity, j->object.entity);
 
-				if (!entityStatic[broadphaseCollision.entity1] || !entityStatic[broadphaseCollision.entity2]) {
+				if (!i->object.isStatic || !j->object.isStatic) {
 					m_broadphaseCollisions.insert(broadphaseCollision);
 				}
 			}

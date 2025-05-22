@@ -18,6 +18,12 @@ struct AABB {
 	NtshEngn::Math::vec3 size;
 };
 
+struct OctreeData {
+	NtshEngn::Entity entity;
+	AABB aabb;
+	bool isStatic;
+};
+
 struct BroadphaseCollision {
 	NtshEngn::Entity entity1;
 	NtshEngn::Entity entity2;
