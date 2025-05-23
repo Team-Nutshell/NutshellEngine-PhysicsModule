@@ -20,8 +20,8 @@ struct AABB {
 
 struct OctreeData {
 	NtshEngn::Entity entity;
-	AABB aabb;
 	bool isStatic;
+	AABB aabb;
 };
 
 struct BroadphaseCollision {
