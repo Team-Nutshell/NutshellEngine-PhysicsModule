@@ -130,6 +130,8 @@ namespace NtshEngn {
 		RaycastInformation raycast(const Math::vec3& rayOrigin, const Math::vec3& rayDirection, float tMin, float tMax, const ColliderSphere* sphere);
 		RaycastInformation raycast(const Math::vec3& rayOrigin, const Math::vec3& rayDirection, float tMin, float tMax, const ColliderCapsule* capsule);
 
+		void scriptsPhysicsUpdate(float dt);
+
 	private:
 		const uint32_t m_maxIterations = 60;
 		const float m_maxDeltaTime = 1.0f / 60.0f;

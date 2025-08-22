@@ -18,6 +18,11 @@ void NtshEngn::PhysicsModule::update(float dt) {
 
 	uint32_t iterations = 0;
 	while ((m_timeAccumulator >= m_maxDeltaTime) && (iterations < m_maxIterations)) {
+		// Call Scripts' physicsUpdate
+		profiler->startBlock("Scripts physicsUpdate");
+		scriptsPhysicsUpdate(m_maxDeltaTime);
+		profiler->endBlock();
+
 		// Euler integrator
 		profiler->startBlock("Euler Integrator");
 		eulerIntegrator(m_maxDeltaTime);
@@ -530,7 +535,7 @@ void NtshEngn::PhysicsModule::collisionsBroadphase() {
 	Math::vec3 sceneAABBMax;
 
 	std::vector<OctreeData> octreeDatas;
-	for (const Entity& entity : entities) {
+	for (Entity entity : entities) {
 		OctreeData octreeData;
 		octreeData.entity = entity;
 
@@ -2187,6 +2192,14 @@ NtshEngn::RaycastInformation NtshEngn::PhysicsModule::raycast(const Math::vec3& 
 	}
 
 	return raycastInformation;
+}
+
+void NtshEngn::PhysicsModule::scriptsPhysicsUpdate(float dt) {
+	for (Entity entity : entities) {
+		if (ecs->hasComponent<Scriptable>(entity)) {
+			ecs->getComponent<Scriptable>(entity).script->physicsUpdate(dt);
+		}
+	}
 }
 
 extern "C" NTSHENGN_MODULE_API NtshEngn::PhysicsModuleInterface* createModule() {
