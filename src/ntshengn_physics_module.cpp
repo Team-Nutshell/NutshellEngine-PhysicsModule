@@ -17,20 +17,20 @@ void NtshEngn::PhysicsModule::destroy() {
 	NTSHENGN_MODULE_FUNCTION_NOT_IMPLEMENTED();
 }
 
-NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderShape* shape1, const ColliderShape* shape2) {
-	NTSHENGN_UNUSED(shape1);
-	NTSHENGN_UNUSED(shape2);
+NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderShape& collider1, const ColliderShape& collider2) {
+	NTSHENGN_UNUSED(collider1);
+	NTSHENGN_UNUSED(collider2);
 	NTSHENGN_MODULE_FUNCTION_NOT_IMPLEMENTED();
 
 	return IntersectionInformation();
 }
 
-NtshEngn::RaycastInformation NtshEngn::PhysicsModule::raycast(const Math::vec3& rayOrigin, const Math::vec3& rayDirection, float tMin, float tMax, const ColliderShape* shape) {
+NtshEngn::RaycastInformation NtshEngn::PhysicsModule::raycast(const Math::vec3& rayOrigin, const Math::vec3& rayDirection, float tMin, float tMax, const ColliderShape& collider) {
 	NTSHENGN_UNUSED(rayOrigin);
 	NTSHENGN_UNUSED(rayDirection);
 	NTSHENGN_UNUSED(tMin);
 	NTSHENGN_UNUSED(tMax);
-	NTSHENGN_UNUSED(shape);
+	NTSHENGN_UNUSED(collider);
 	NTSHENGN_MODULE_FUNCTION_NOT_IMPLEMENTED();
 
 	return RaycastInformation();
