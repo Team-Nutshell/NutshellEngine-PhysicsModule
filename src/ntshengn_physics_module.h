@@ -101,10 +101,10 @@ namespace NtshEngn {
 		Math::vec3 getCenter(const ColliderBox& box);
 		Math::vec3 getCenter(const ColliderCapsule& capsule);
 
-		void transform(ColliderShape& collider, const Math::vec3& translation, const Math::vec3& rotation, const Math::vec3& scale);
-		void transform(ColliderBox& box, const Math::vec3& translation, const Math::vec3& rotation, const Math::vec3& scale);
-		void transform(ColliderSphere& sphere, const Math::vec3& translation, const Math::vec3& rotation, const Math::vec3& scale);
-		void transform(ColliderCapsule& capsule, const Math::vec3& translation, const Math::vec3& rotation, const Math::vec3& scale);
+		void transform(ColliderShape& collider, const Math::vec3& translation, const Math::quat& rotation, const Math::vec3& scale);
+		void transform(ColliderBox& box, const Math::vec3& translation, const Math::quat& rotation, const Math::vec3& scale);
+		void transform(ColliderSphere& sphere, const Math::vec3& translation, const Math::quat& rotation, const Math::vec3& scale);
+		void transform(ColliderCapsule& capsule, const Math::vec3& translation, const Math::quat& rotation, const Math::vec3& scale);
 
 		Math::vec3 closestPointOnSegment(const Math::vec3& point, const Math::vec3& segmentA, const Math::vec3& segmentB);
 		std::pair<Math::vec3, Math::vec3> closestPointSegmentSegment(const Math::vec3& segmentA1, const Math::vec3& segmentA2, const Math::vec3& segmentB1, const Math::vec3& segmentB2);

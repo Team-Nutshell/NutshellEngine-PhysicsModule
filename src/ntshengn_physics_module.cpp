@@ -175,7 +175,9 @@ void NtshEngn::PhysicsModule::eulerIntegrator(float dt) {
 				entityTransform.position += entityRigidbody.linearVelocity * dt;
 
 				if (!entityRigidbody.lockRotation) {
-					entityTransform.rotation += entityRigidbody.angularVelocity * dt;
+					Math::quat spin = (0.5f * dt) * Math::quat(0.0f, entityRigidbody.angularVelocity.x, entityRigidbody.angularVelocity.y, entityRigidbody.angularVelocity.z);
+					spin.a = 1.0f;
+					entityTransform.rotation = Math::normalize(spin * entityTransform.rotation);
 				}
 			}
 			else {
@@ -552,9 +554,7 @@ void NtshEngn::PhysicsModule::collisionsBroadphase() {
 				const Math::vec3 max = Math::vec3(1.0f, 1.0f, 1.0f);
 
 				const Math::mat4 transformMatrix = Math::translate(collider.center) *
-					Math::rotate(collider.rotation.x, Math::vec3(1.0f, 0.0f, 0.0f)) *
-					Math::rotate(collider.rotation.y, Math::vec3(0.0f, 1.0f, 0.0f)) *
-					Math::rotate(collider.rotation.z, Math::vec3(0.0f, 0.0f, 1.0f)) *
+					Math::quatToRotationMatrix(collider.rotation) *
 					Math::scale(collider.halfExtent);
 
 				std::array<Math::vec3, 8> boxPoints = {
@@ -732,17 +732,13 @@ void NtshEngn::PhysicsModule::collisionsNarrowphase() {
 NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderBox& box1, const ColliderBox& box2) {
 	IntersectionInformation intersectionInformation;
 
-	const Math::mat4 box1Rotation = Math::rotate(box1.rotation.x, Math::vec3(1.0f, 0.0f, 0.0f)) *
-		Math::rotate(box1.rotation.y, Math::vec3(0.0f, 1.0f, 0.0f)) *
-		Math::rotate(box1.rotation.z, Math::vec3(0.0f, 0.0f, 1.0f));
+	const Math::mat4 box1Rotation = Math::quatToRotationMatrix(box1.rotation);
 
 	const Math::mat4 box1Transform = Math::translate(box1.center) *
 		box1Rotation *
 		Math::scale(box1.halfExtent);
 
-	const Math::mat4 box2Rotation = Math::rotate(box2.rotation.x, Math::vec3(1.0f, 0.0f, 0.0f)) *
-		Math::rotate(box2.rotation.y, Math::vec3(0.0f, 1.0f, 0.0f)) *
-		Math::rotate(box2.rotation.z, Math::vec3(0.0f, 0.0f, 1.0f));
+	const Math::mat4 box2Rotation = Math::quatToRotationMatrix(box2.rotation);
 
 	const Math::mat4 box2Transform = Math::translate(box2.center) *
 		box2Rotation *
@@ -904,9 +900,7 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 	Math::vec3 closestPoint = box.center;
 	const Math::vec3 direction = sphere.center - box.center;
 
-	const Math::mat4 boxRotation = Math::rotate(box.rotation.x, Math::vec3(1.0f, 0.0f, 0.0f)) *
-		Math::rotate(box.rotation.y, Math::vec3(0.0f, 1.0f, 0.0f)) *
-		Math::rotate(box.rotation.z, Math::vec3(0.0f, 0.0f, 1.0f));
+	const Math::mat4 boxRotation = Math::quatToRotationMatrix(box.rotation);
 	for (uint8_t i = 0; i < 3; i++) {
 		float closestHalfExtent = Math::dot(direction, boxRotation[i]);
 		if (closestHalfExtent > box.halfExtent[i]) {
@@ -941,9 +935,7 @@ NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const Colli
 NtshEngn::IntersectionInformation NtshEngn::PhysicsModule::intersect(const ColliderBox& box, const ColliderCapsule& capsule) {
 	IntersectionInformation intersectionInformation;
 
-	const Math::mat4 boxRotation = Math::rotate(box.rotation.x, Math::vec3(1.0f, 0.0f, 0.0f)) *
-		Math::rotate(box.rotation.y, Math::vec3(0.0f, 1.0f, 0.0f)) *
-		Math::rotate(box.rotation.z, Math::vec3(0.0f, 0.0f, 1.0f));
+	const Math::mat4 boxRotation = Math::quatToRotationMatrix(box.rotation);
 	
 	float distanceToSegmentOrigin;
 	Math::vec3 pointOnBox;
@@ -1112,7 +1104,7 @@ NtshEngn::Math::vec3 NtshEngn::PhysicsModule::getCenter(const ColliderCapsule& c
 	return (capsule.base + capsule.tip) / 2.0f;
 }
 
-void NtshEngn::PhysicsModule::transform(ColliderShape& collider, const Math::vec3& translation, const Math::vec3& rotation, const Math::vec3& scale) {
+void NtshEngn::PhysicsModule::transform(ColliderShape& collider, const Math::vec3& translation, const Math::quat& rotation, const Math::vec3& scale) {
 	if (std::holds_alternative<ColliderBox>(collider)) {
 		transform(std::get<ColliderBox>(collider), translation, rotation, scale);
 	}
@@ -1124,35 +1116,27 @@ void NtshEngn::PhysicsModule::transform(ColliderShape& collider, const Math::vec
 	}
 }
 
-void NtshEngn::PhysicsModule::transform(ColliderBox& box, const Math::vec3& translation, const Math::vec3& rotation, const Math::vec3& scale) {
+void NtshEngn::PhysicsModule::transform(ColliderBox& box, const Math::vec3& translation, const Math::quat& rotation, const Math::vec3& scale) {
 	box.halfExtent.x *= std::abs(scale.x);
 	box.halfExtent.y *= std::abs(scale.y);
 	box.halfExtent.z *= std::abs(scale.z);
 
-	const Math::quat originalRotation = Math::eulerAnglesToQuat(box.rotation);
-	const Math::quat modelRotation = Math::eulerAnglesToQuat(rotation);
-	box.rotation = Math::quatToEulerAngles(modelRotation * originalRotation);
-	const Math::mat4 rotationMatrix = Math::translate(translation) * Math::rotate(rotation.x, Math::vec3(1.0f, 0.0f, 0.0f)) *
-		Math::rotate(rotation.y, Math::vec3(0.0f, 1.0f, 0.0f)) *
-		Math::rotate(rotation.z, Math::vec3(0.0f, 0.0f, 1.0f)) * Math::translate(-translation);
+	box.rotation = rotation * box.rotation;
+	const Math::mat4 rotationMatrix = Math::translate(translation) * Math::quatToRotationMatrix(rotation) * Math::translate(-translation);
 	const Math::vec3 scaledCenter = Math::vec3(box.center.x * std::abs(scale.x), box.center.y * std::abs(scale.y), box.center.z * std::abs(scale.z));
 	box.center = Math::vec3(rotationMatrix * Math::vec4(scaledCenter + translation, 1.0f));
 }
 
-void NtshEngn::PhysicsModule::transform(ColliderSphere& sphere, const Math::vec3& translation, const Math::vec3& rotation, const Math::vec3& scale) {
-	const Math::mat4 rotationMatrix = Math::translate(translation) * Math::rotate(rotation.x, Math::vec3(1.0f, 0.0f, 0.0f)) *
-		Math::rotate(rotation.y, Math::vec3(0.0f, 1.0f, 0.0f)) *
-		Math::rotate(rotation.z, Math::vec3(0.0f, 0.0f, 1.0f)) * Math::translate(-translation);
+void NtshEngn::PhysicsModule::transform(ColliderSphere& sphere, const Math::vec3& translation, const Math::quat& rotation, const Math::vec3& scale) {
+	const Math::mat4 rotationMatrix = Math::translate(translation) * Math::quatToRotationMatrix(rotation) * Math::translate(-translation);
 
 	const Math::vec3 scaledCenter = Math::vec3(sphere.center.x * std::abs(scale.x), sphere.center.y * std::abs(scale.y), sphere.center.z * std::abs(scale.z));
 	sphere.center = Math::vec3(rotationMatrix * Math::vec4(scaledCenter + translation, 1.0f));
 	sphere.radius *= std::max(std::abs(scale.x), std::max(std::abs(scale.y), std::abs(scale.z)));
 }
 
-void NtshEngn::PhysicsModule::transform(ColliderCapsule& capsule, const Math::vec3& translation, const Math::vec3& rotation, const Math::vec3& scale) {
-	const Math::mat4 rotationMatrix = Math::translate(translation) * Math::rotate(rotation.x, Math::vec3(1.0f, 0.0f, 0.0f)) *
-		Math::rotate(rotation.y, Math::vec3(0.0f, 1.0f, 0.0f)) *
-		Math::rotate(rotation.z, Math::vec3(0.0f, 0.0f, 1.0f)) * Math::translate(-translation);
+void NtshEngn::PhysicsModule::transform(ColliderCapsule& capsule, const Math::vec3& translation, const Math::quat& rotation, const Math::vec3& scale) {
+	const Math::mat4 rotationMatrix = Math::translate(translation) * Math::quatToRotationMatrix(rotation) * Math::translate(-translation);
 
 	const Math::vec3 scaledBase = Math::vec3(capsule.base.x * std::abs(scale.x), capsule.base.y * std::abs(scale.y), capsule.base.z * std::abs(scale.z));
 	capsule.base = Math::vec3(rotationMatrix * Math::vec4(scaledBase + translation, 1.0f));
@@ -2056,9 +2040,7 @@ std::vector<NtshEngn::Math::vec3> NtshEngn::PhysicsModule::clipEdgesToBox(const 
 NtshEngn::RaycastInformation NtshEngn::PhysicsModule::raycast(const Math::vec3& rayOrigin, const Math::vec3& rayDirection, float tMin, float tMax, const ColliderBox& box) {
 	RaycastInformation raycastInformation;
 
-	const Math::mat4 boxRotation = Math::rotate(box.rotation.x, Math::vec3(1.0f, 0.0f, 0.0f)) *
-		Math::rotate(box.rotation.y, Math::vec3(0.0f, 1.0f, 0.0f)) *
-		Math::rotate(box.rotation.z, Math::vec3(0.0f, 0.0f, 1.0f));
+	const Math::mat4 boxRotation = Math::quatToRotationMatrix(box.rotation);
 
 	const Math::vec3 rayToBox = box.center - rayOrigin;
 
